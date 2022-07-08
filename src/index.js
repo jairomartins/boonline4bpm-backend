@@ -14,4 +14,6 @@ route(app)
 
 require('./controllers/authController')(app)
 
-app.listen(3000)
+app.listen(3000,()=>{
+    console.log('Online  in http://localhost:3000')
+})
