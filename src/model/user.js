@@ -1,17 +1,19 @@
 const mongoose = require('../database/index')
 
 const UserSchema = new mongoose.Schema({
-    nome:{
+    
+    userName:{
         type:String,
-        required:true
+        required:true,
+        unique:true
     },
-    email:{
+    userEmail:{
         type:String,
         required:true,
         unique:true,
         lowercase:true
     },
-    senha:{
+    userPassword:{
         type:String,
         required:true
     }

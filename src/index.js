@@ -4,7 +4,11 @@ const bodyParser = require('body-parser')
 
 const route = require('./http/route')
 
+const cors = require('cors')
+
 app = express()
+
+ app.use(cors())
 
 app.use(bodyParser.json())
 
