@@ -6,9 +6,11 @@ const route = require('./http/route')
 
 const cors = require('cors')
 
+const jwt = require('jsonwebtoken')
+
 app = express()
 
- app.use(cors())
+app.use(cors())
 
 app.use(bodyParser.json())
 

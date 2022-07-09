@@ -20,9 +20,11 @@ route.post('/register', async(req,res)=>{
 route.post('/login', async(req,res)=>{
     try{
         const user = await User.findOne({
-            userEmail:req.body.userEmail,
-            userPassword:req.body.userPassword
+            userEmail: req.body.userEmail,
+            userPassword: req.body.userPassword
         })
+        console.log(user)
+        console.log(req.body)
         if(user){
             return res.json({status:"ok", user:true})
         }else{
