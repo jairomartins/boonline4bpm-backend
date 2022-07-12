@@ -13,6 +13,7 @@ route.post('/register', async(req,res)=>{
     try{
         const user = await User.create(req.body)
         return res.status(200).send({message:"usuario registrado"})
+        
     }catch(err){
         return res.status(400).send({error:'Registration failed'})
     }
