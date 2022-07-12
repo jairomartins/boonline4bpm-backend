@@ -1,12 +1,17 @@
+require('dotenv').config()
+
+//const's
+const port = process.env.PORT
+
+
 const express = require('express')
 
 const bodyParser = require('body-parser')
 
 const route = require('./http/route')
+const userRoute = require('./http/userRoute')
 
-const cors = require('cors')
-
-const jwt = require('jsonwebtoken')
+const cors = require('cors')// define de onde são permitidas as requisições defaul = todos os lugares
 
 app = express()
 
@@ -18,8 +23,10 @@ app.use(bodyParser.urlencoded({extended:false})) //entender quando passar parame
 
 route(app)
 
+userRoute(app)
+
 require('./controllers/authController')(app)
 
-app.listen(3000,()=>{
-    console.log('Online  in http://localhost:3000')
+app.listen(port,()=>{
+    console.log('Online  in http://localhost:'+port)
 })

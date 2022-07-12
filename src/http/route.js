@@ -1,6 +1,6 @@
 
 
-function route  (app){
+function route (app){
     app.get('/',(req,res)=>{
 
         res.send('it´s ok!')
