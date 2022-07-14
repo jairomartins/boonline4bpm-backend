@@ -1,6 +1,6 @@
 const mongoose = require('../database/index')
 
-const EfetivoSchema = new mongoose.Schema({
+exports.EfetivoSchema = new mongoose.Schema({
     vtr:{
         type:String
     },
@@ -18,6 +18,6 @@ const EfetivoSchema = new mongoose.Schema({
     },
 })
 
-const Efetivo = mongoose.model('Efetivo',EfetivoSchema)
+// const Efetivo = mongoose.model('Efetivo',EfetivoSchema)
 
-module.exports = Efetivo
+// module.exports = Efetivo

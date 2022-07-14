@@ -1,6 +1,6 @@
 const mongoose = require('../database/index')
 
-const MaterialScheme = new mongoose.Schema({
+exports.MaterialScheme = new mongoose.Schema({
     descricao:{
         type:String,
         required:true
@@ -10,6 +10,6 @@ const MaterialScheme = new mongoose.Schema({
     }
 })
 
-const Material = mongoose.model('Material',MaterialScheme)
+// const Material = mongoose.model('Material',MaterialScheme)
 
-module.exports = Material
+// module.exports = Material

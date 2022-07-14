@@ -1,8 +1,8 @@
 const userController = require('../controllers/userController')
 
 const verificaToken = (req, res, next)=>{
-    res.status(200).send("É necessário fazer login")
-    // next()
+    // res.status(200).send("É necessário fazer login")
+     next()
 }
 
 function userRoute(app){

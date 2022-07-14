@@ -3,15 +3,17 @@ require('dotenv').config()
 //const's
 const port = process.env.PORT
 
+console.log(process.env.MONGO)
 
 const express = require('express')
 
 const bodyParser = require('body-parser')
 
 const route = require('./http/route')
+
 const userRoute = require('./http/userRoute')
 
-const cors = require('cors')// define de onde são permitidas as requisições defaul = todos os lugares
+const cors = require('cors')// define de onde são permitidas as requisições. default = todos os lugares
 
 app = express()
 
@@ -27,6 +29,6 @@ userRoute(app)
 
 require('./controllers/authController')(app)
 
-app.listen(port,()=>{
+app.listen(3001,()=>{
     console.log('Online  in http://localhost:'+port)
 })
