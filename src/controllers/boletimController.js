@@ -2,54 +2,22 @@
 
 const { json } = require('body-parser')
 const Boletim = require('../model/boletim')
-const Env = require('../model/envolvido')
 
 exports.BoletimList = async (req, res)=>{
     const result = await Boletim.find()
     res.send(JSON.stringify(result))
 }
 
+exports.boletimByID = async (req, res)=>{
+    const result = await Boletim.find({_id: "62ddd9726ef6c57b50f37ee2"})
+
+    res.send(JSON.stringify(result))
+}
 
 exports.createBoletim = async(req, res)=>{
     
     try{
-        // const newBoletim = await Boletim.create({
-        //     numero:"123",
-        //     natureza:"furto",
-        //     envolvidos:[{
-        //             nome:"joao",
-        //             sobrenome:"martins"
-        //         },{
-        //             nome:"maria",
-        //             sobrenome:"martins"
-        //         },{
-        //             nome:"henrique",
-        //             sobrenome:"martins"
-        //         }
-        //     ],
-        //     material:[{
-        //         descricao:"item1",
-        //     },{
-        //         descricao:"item3",
-        //         quantidade:"23gramas",
-        //         validade:"23"
-        //     }],
-        //     efetivo:[{vtr:"128",
-        //     nome:"jairo martins de sousa",
-        //     graduacao:"SD PM",
-        //     numeroBarra:"194/18",
-        //     id:"871110"},
-        //     {vtr:"128",
-        //     nome:"henrique martins de sousa",
-        //     graduacao:"CAP PM",
-        //     numeroBarra:"/48",
-        //     id:"871111-2"}
-        // ],
-        //     historico:{content:"Aqui vai o histórico 3"},
-             
-        // })
         const newBoletim = await Boletim.create(req.body.boletim)
-        console.log("-------------\n"+newBoletim)
         return res.status(200).send(JSON.stringify(newBoletim))
     }catch(err){
         return res.status(400).send({error:'Registration failed'})

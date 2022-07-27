@@ -48,6 +48,7 @@ const MaterialSchema = new mongoose.Schema({
 }
 )
 
+// dados de cadastro de efetivo
 const EfetivoSchema = new mongoose.Schema({
     vtr:{
         type:String
@@ -75,7 +76,7 @@ const BoScheme = new mongoose.Schema({
     envolvidos:[EnvolvidoSchema],
     materiaisApreendidos:[MaterialSchema],
     efetivo:[EfetivoSchema],
-    historicojson:String
+    historicohtml:String
 
 })
 

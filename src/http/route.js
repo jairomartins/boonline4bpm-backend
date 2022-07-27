@@ -11,9 +11,13 @@ function route (app){
         boCont.createBoletim(req,res)
         res.send('tentei cara;/')
     })
-    app.get('/listbo',(req,res)=>{
-        boCont.BoletimList(req,res)
+    app.get('/listbo',async (req,res)=>{
+        await boCont.BoletimList(req,res)
         // res.send('tentei cara;/')
+    })
+
+    app.get('/listaByID', async (req, res)=>{
+        await boCont.boletimByID(req, res)
     })
 
     app.post('/savebo', async (req,res)=>{
