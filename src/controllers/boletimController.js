@@ -9,7 +9,7 @@ exports.BoletimList = async (req, res)=>{
 }
 
 exports.boletimByID = async (req, res)=>{
-    const result = await Boletim.find({_id: "62ddd9726ef6c57b50f37ee2"})
+    const result = await Boletim.find({_id: req.params.IDBoletim})
 
     res.send(JSON.stringify(result))
 }

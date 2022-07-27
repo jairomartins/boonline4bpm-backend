@@ -20,6 +20,10 @@ function route (app){
         await boCont.boletimByID(req, res)
     })
 
+    app.get('/listByID/:IDBoletim', async(req, res) => {
+        await boCont.boletimByID(req, res)
+      })
+
     app.post('/savebo', async (req,res)=>{
         await boCont.createBoletim(req,res)
     })
