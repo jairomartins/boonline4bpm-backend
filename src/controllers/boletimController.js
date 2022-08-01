@@ -7,8 +7,9 @@ const Boletim = require('../model/boletim')
 //
 //
 //
-exports.BoletimList = async ()=>{
+exports.BoletimList = async (req, res)=>{
     const result = await Boletim.find()
+    console.log(result)
     res.send(JSON.stringify(result))
 }
 
@@ -18,6 +19,15 @@ exports.BoletimList = async ()=>{
 //
 exports.boletimByID = async (req, res)=>{
     const result = await Boletim.find({_id: req.params.IDBoletim})
+    console.log('me achou')
+    console.log(req.params)
+    res.send(JSON.stringify(result))
+}
+
+exports.boletimByNumero = async (req, res)=>{
+    const result = await Boletim.find({numero: req.params.NumeroBoletim})
+    console.log('me achou')
+    console.log(req.params)
     res.send(JSON.stringify(result))
 }
 

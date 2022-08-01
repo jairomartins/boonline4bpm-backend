@@ -8,8 +8,8 @@ function route (app){
         res.send('tentei cara;/')
     })
     
-    app.get('/adm/listarBoletins',async ()=>{
-        await boCont.BoletimList()
+    app.get('/adm/listarBoletins',async (req ,res )=>{
+        await boCont.BoletimList( req, res)
     })
 
     app.get('/adm/listaByID', async (req, res)=>{
@@ -20,10 +20,13 @@ function route (app){
         await boCont.boletimByID(req, res)
       })
 
+      app.get('/adm/listByNumero/:NumeroBoletim', async(req, res) => {
+        await boCont.boletimByNumero(req, res)
+      })
+
     app.post('/adm/salvarBoletim', async (req,res)=>{
         await boCont.createBoletim(req,res)
     })
-
 
 }
 
