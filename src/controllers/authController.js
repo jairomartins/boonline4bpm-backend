@@ -1,6 +1,8 @@
 const { Router } = require('express')
 const express = require('express')
 
+const cpt = require('../lib/crpyto')
+
 const User = require('../model/user')
 
 const route = express.Router()
@@ -9,13 +11,18 @@ const jwt = require('jsonwebtoken')
 
 //registrar novo usuario no banco de dados
 route.post('/register', async(req,res)=>{
+   
     
+    const {userName, userEmail, userPassword} = req.body
+
+    console.log(cpt.encryptAES(req.body.userPassword,"jota"))
+    console.log(cpt.decryptAES())
     try{
         const user = await User.create(req.body)
-        return res.status(200).send({message:"usuario registrado"})
+        return res.status(200).send({message:"Usuario registrado"})
         
     }catch(err){
-        return res.status(400).send({error:'Registration failed'})
+        return res.status(400).send({error:'Erro ao cadastrar novo usuário'})
     }
 })
 
