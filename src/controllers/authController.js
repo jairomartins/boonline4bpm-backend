@@ -12,11 +12,7 @@ const jwt = require('jsonwebtoken')
 //registrar novo usuario no banco de dados
 route.post('/register', async(req,res)=>{
    
-    
-    const {userName, userEmail, userPassword} = req.body
-
-    console.log(cpt.encryptAES(req.body.userPassword,"jota"))
-    console.log(cpt.decryptAES())
+  
     try{
         const user = await User.create(req.body)
         return res.status(200).send({message:"Usuario registrado"})

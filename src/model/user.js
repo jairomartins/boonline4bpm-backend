@@ -15,6 +15,13 @@ const UserSchema = new mongoose.Schema({
     userPassword:{
         type:String,
         required:true
+    },
+    userContato:{
+        type:String,
+    },
+    tipo:{
+        type:String,
+        default:"comum"
     }
 })
 
