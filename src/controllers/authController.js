@@ -33,7 +33,7 @@ route.post('/login', async(req,res)=>{
             userPassword: req.body.userPassword
         })
         console.log(user.userName)
-        console.log(req.body)
+        // console.log(req.body)
         if(user){
             return res.json({status:"ok", user:true})
         }else{
