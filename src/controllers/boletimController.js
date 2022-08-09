@@ -7,6 +7,9 @@ const Boletim = require('../model/boletim')
 //
 //
 //
+
+
+
 exports.BoletimList = async (req, res)=>{
     const result = await Boletim.find()
     console.log(result)
