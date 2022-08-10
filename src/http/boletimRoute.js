@@ -30,7 +30,7 @@ function route (app){
         res.send('tentei cara;/')
     })
     
-    app.get('/adm/listarBoletins',verificaToken,async (req ,res )=>{
+    app.get('/adm/listarBoletins',async (req ,res )=>{
         await boCont.BoletimList( req, res)
     })
 
