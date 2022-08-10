@@ -1,14 +1,17 @@
 
 const boCont = require('../controllers/boletimController')
 
-const verificaToken = (req, res, next)=>{
+const jwt = require('jsonwebtoken')
+const SECRET_PASSWORD_TOKEN = "JMARTINS_194"
 
+const verificaToken = (req, res, next)=>{
+    console.log('verificou token')
     const token = req.headers["x-access-token"]
     console.log(token)
     if(!token){
         res.json({error:"você precisa de um token"})
     }else{
-        jwt.verify(token,"JMARTINS_194", (err,decoded)=>{
+        jwt.verify(token,SECRET_PASSWORD_TOKEN, (err,decoded)=>{
             if(err){
                 res.json({auth:false, status:"falha ao autenticar o token"})
             }else{
@@ -35,11 +38,11 @@ function route (app){
         await boCont.boletimByID(req, res)
     })
 
-    app.get('/adm/listByID/:IDBoletim', async(req, res) => {
+    app.get('/adm/listByID/:IDBoletim',verificaToken, async(req, res) => {
         await boCont.boletimByID(req, res)
       })
 
-      app.get('/adm/listByNumero/:NumeroBoletim', async(req, res) => {
+      app.get('/adm/listByNumero/:NumeroBoletim',verificaToken, async(req, res) => {
         await boCont.boletimByNumero(req, res)
       })
 

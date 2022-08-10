@@ -69,8 +69,9 @@ const verificaToken = (req, res, next)=>{
             if(err){
                 res.json({auth:false, status:"falha ao autenticar o token"})
             }else{
-                req.userEmail = decoded.userEmail
-                next()
+                if(req.body.userEmail==decoded.userEmail){
+                   res.json( {auth:true})
+                }
             }
         })
     }
