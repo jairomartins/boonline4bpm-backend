@@ -28,7 +28,7 @@ exports.boletimByID = async (req, res)=>{
 }
 
 exports.boletimByNumero = async (req, res)=>{
-    const result = await Boletim.find({numero: req.params.NumeroBoletim})
+    const result = await Boletim.find({numero: req.params.NumeroBoletim}).sort({'_id':-1})
     console.log('me achou')
     console.log(req.params)
     res.send(JSON.stringify(result))
@@ -53,6 +53,16 @@ exports.createBoletim = async(req, res)=>{
         const newBoletim = await Boletim.create(req.body.boletim)
         return res.status(200).send(JSON.stringify(newBoletim))
     }catch(err){
-        return res.status(400).send({error:'Registration failed'})
+        return res.status(401).send({error:'Registration failed'})
     }
+}
+
+exports.listaMeusBos = async (req, res)=>{
+    const result = await Boletim.find({
+        efetivo:{$elemMatch:{
+            id:req.params.id
+        }}
+    })
+    console.log(result.numero)
+    res.status(200).send(JSON.stringify(result))
 }

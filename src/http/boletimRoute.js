@@ -42,13 +42,19 @@ function route (app){
         await boCont.boletimByID(req, res)
       })
 
-      app.get('/adm/listByNumero/:NumeroBoletim',verificaToken, async(req, res) => {
+      app.get('/adm/listByNumero/:NumeroBoletim', async(req, res) => {
         await boCont.boletimByNumero(req, res)
       })
 
     app.post('/adm/salvarBoletim', async (req,res)=>{
         await boCont.createBoletim(req,res)
     })
+
+
+    app.get('/adm/listaMeusBos/:id', async (req,res)=>{
+        await boCont.listaMeusBos(req, res)
+    })
+    
 
 }
 

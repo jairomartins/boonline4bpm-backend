@@ -19,6 +19,9 @@ const UserSchema = new mongoose.Schema({
     userContato:{
         type:String,
     },
+    userMatriculaId:{
+        type:String,
+    },
     tipo:{
         type:String,
         default:"comum"
