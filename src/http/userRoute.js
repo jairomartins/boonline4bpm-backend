@@ -20,6 +20,7 @@ const verificaToken = (req, res, next)=>{
             }else{
                 if(req.body.userEmail==decoded.userEmail){
                    res.json( {auth:true})
+                   next()
                 }
             }
         })
