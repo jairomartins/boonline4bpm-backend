@@ -25,6 +25,7 @@ const verificaToken = (req, res, next)=>{
             }
         })
     }
+    next()
 }
 function userRoute(app){
 
