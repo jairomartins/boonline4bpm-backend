@@ -34,5 +34,5 @@ boRoute(app)
 require('./controllers/authController')(app)
 
 app.listen(433,()=>{
-    console.log('Online  in https://localhost:433')
+    console.log('Online  in http://localhost:433')
 })
