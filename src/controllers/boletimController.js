@@ -29,7 +29,13 @@ exports.boletimByID = async (req, res)=>{
 
 exports.boletimByNumero = async (req, res)=>{
     const result = await Boletim.findOne({numero: req.params.NumeroBoletim}).sort({'_id':-1})
-    console.log('me achou')
+    console.log(req.params)
+    console.log(JSON.stringify(result))
+    res.send(JSON.stringify(result))
+}
+
+exports.boletimByNumeroECidade = async (req, res)=>{
+    const result = await Boletim.findOne({numero: req.params.NumeroBoletim, municipio:req.params.cidade}).sort({'_id':-1})
     console.log(req.params)
     console.log(JSON.stringify(result))
     res.send(JSON.stringify(result))

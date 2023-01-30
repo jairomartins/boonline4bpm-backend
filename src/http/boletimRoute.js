@@ -52,6 +52,10 @@ function route (app){
         await boCont.boletimByNumero(req, res)
       })
 
+      app.get('/adm/listByNumeroECidade/:NumeroBoletim/:cidade',verificaToken , async(req, res) => {
+        await boCont.boletimByNumeroECidade(req, res)
+      })
+
     app.post('/adm/salvarBoletim', async (req,res)=>{
         await boCont.createBoletim(req,res)
     })
