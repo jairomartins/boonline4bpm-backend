@@ -87,7 +87,7 @@ const BoScheme = new mongoose.Schema({
     efetivo:[EfetivoSchema],
     historicohtml:String
 
-})
+}, { timestamps: true })
 
 
 const Boletim = mongoose.model('Boletim',BoScheme)
