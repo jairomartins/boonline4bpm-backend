@@ -22,7 +22,6 @@ exports.BoletimList = async (req, res)=>{
 //
 exports.boletimByID = async (req, res)=>{
     const result = await Boletim.find({_id: req.params.IDBoletim})
-    console.log('me achou')
     console.log(req.params)
     res.send(JSON.stringify(result))
 }
@@ -64,6 +63,7 @@ exports.createBoletim = async(req, res)=>{
     }
 }
 
+//Busca por Boletim que contem no efetivo ids igual do passado no params.id
 exports.listaMeusBos = async (req, res)=>{
     const result = await Boletim.find({
         efetivo:{$elemMatch:{

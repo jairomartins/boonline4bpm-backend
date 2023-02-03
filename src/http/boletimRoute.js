@@ -48,19 +48,22 @@ function route (app){
         await boCont.boletimByID(req, res)
       })
 
-      app.get('/adm/listByNumero/:NumeroBoletim',verificaToken , async(req, res) => {
-        await boCont.boletimByNumero(req, res)
-      })
+    app.get('/adm/listByNumero/:NumeroBoletim',verificaToken , async(req, res) => {
+    await boCont.boletimByNumero(req, res)
+    })
 
-      app.get('/adm/listByNumeroECidade/:NumeroBoletim/:cidade',verificaToken , async(req, res) => {
-        await boCont.boletimByNumeroECidade(req, res)
-      })
+    app.get('/adm/listByNumeroECidade/:NumeroBoletim/:cidade',verificaToken , async(req, res) => {
+    await boCont.boletimByNumeroECidade(req, res)
+    })
 
     app.post('/adm/salvarBoletim', async (req,res)=>{
         await boCont.createBoletim(req,res)
     })
 
 
+    //Lista boletins que incluem o usuario logado como parte do efetivo empregado
+    //Recebe o ID do usuario via GET 
+    //listaMeusBos()
     app.get('/adm/listaMeusBos/:id', async (req,res)=>{
         await boCont.listaMeusBos(req, res)
     })
