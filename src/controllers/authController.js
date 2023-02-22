@@ -1,17 +1,19 @@
-const { Router } = require('express')
-const express = require('express')
+require('dotenv').config()
 
-const SECRET_PASSWORD_TOKEN = "JMARTINS_194"
+const bcrypt = require('bcryptjs')
 
 const User = require('../model/user')
 
-const route = express.Router()
-
 const jwt = require('jsonwebtoken')
 
+const SECRET_PASSWORD_TOKEN = process.env.SECRET_PASSWORD_TOKEN
+
+
+
 //registrar novo usuario no banco de dados
-route.post('/register', async(req,res)=>{
-    
+
+exports.register = async (req, res) =>{
+
     const user = await User.findOne({
         userEmail: req.body.userEmail
         })
@@ -19,53 +21,65 @@ route.post('/register', async(req,res)=>{
     if(user){
         return res.status(400).send({status:"Já existe um usuario cadastrado com esse Email!"})
     }
+
     try{
-        const user = await User.create(req.body)
-        return res.status(200).send({status:"Usuario registrado com sucesso"})
+        const {userName,userEmail,userPassword,userContato,userMatriculaId,tipo} = req.body
+
+        const hashedPassword = await bcrypt.hash(userPassword,10)
+        const user = await User.create({
+            userName,
+            userEmail,
+            userPassword:hashedPassword,
+            userContato,
+            userMatriculaId,
+            tipo})
+        return res.status(200).send({status:'Usuario '+user.userName+' registrado com sucesso'})
         
     }catch(err){
         console.log(err)
         return res.status(400).send({status:"Erro ao Registrar o usuário, verifique se os dados estão preenchidos corretamente !"})
     }
-})
+
+}
 
 
 //faz o login de usuarios
-route.post('/login', async(req,res)=>{
+exports.login = async(req,res)=>{
   
-    console.log(req.body)
+    const {userEmail, userPassword} = req.body
+
     try{
-        const user = await User.findOne({
-            userEmail: req.body.userEmail,
-            userPassword: req.body.userPassword
-        })
-        console.log(req.body)
+        const user = await User.findOne({userEmail})
 
-        if(user){
-            user.userPassword = undefined
-
-            const token = jwt.sign({userEmail:user.userEmail}, SECRET_PASSWORD_TOKEN,{expiresIn:60*1000})
-
-            return res.json({status:"ok",authenticated:true, user:user, token: token})
-        }else{
-            return res.status(400).json({status:"Error : Email e/ou senhas está(ão) errado(s) !", user:null})
+        if (!user){
+            return res.status(400).json({status:"Error : O usuario com este email ainda não está cadastrado!", user:null})
         }
+
+        const isMatch = await bcrypt.compare(userPassword,user.userPassword)
+        
+        if(isMatch){
+            const token = jwt.sign({userEmail:user.userEmail}, SECRET_PASSWORD_TOKEN,{expiresIn:60*1000})
+            return res.json({status:"ok",authenticated:true, token: token})
+        }else{
+            return res.status(400).json({status:"Error : A Senha está incorreta !"})
+        }
+
     }catch(err){
         console.log(err)
-        return res.status(400).json({status:"Error : Não foi possivel conectar ao servidor !",authenticated:false, user:null})
+        return res.status(400).json({status:"Error : Não foi possivel conectar ao servidor !",authenticated:false})
     }
-})
+}
 
 
 // verifica o token no headers da requisição 
-const verificaToken = (req, res, next)=>{
-
+exports.verificaToken = async (req, res, next)=>{
+   
     const token = req.headers["x-access-token"]
-    console.log(token)
+
     if(!token){
         res.json({error:"você precisa de um token"})
     }else{
-        jwt.verify(token,"JMARTINS_194", (err,decoded)=>{
+        jwt.verify(token,SECRET_PASSWORD_TOKEN, (err,decoded)=>{
             if(err){
                 res.json({auth:false, status:"falha ao autenticar o token"})
             }else{
@@ -77,10 +91,3 @@ const verificaToken = (req, res, next)=>{
     }
 }
 
-route.get('/isUserAuth',verificaToken,(req, res)=>{
-   
-    res.json({status:"authenticado"})
-})
-
-
-module.exports = app => app.use('/auth',route)

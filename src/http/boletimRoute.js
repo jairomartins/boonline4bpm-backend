@@ -1,8 +1,9 @@
 
-const boCont = require('../controllers/boletimController')
+const boletimController = require('../controllers/boletimController')
+const authController = require('../controllers/authController')
 
 const jwt = require('jsonwebtoken')
-const SECRET_PASSWORD_TOKEN = "JMARTINS_194"
+const SECRET_PASSWORD_TOKEN = process.env.SECRET_PASSWORD_TOKEN
 
 // verifica o token no headers da requisição 
 const verificaToken = (req, res, next)=>{
@@ -30,34 +31,33 @@ const verificaToken = (req, res, next)=>{
 
 function route (app){
 
-    app.get('/adm/boletim',verificaToken,(req,res)=>{
-        boCont.createBoletim(req,res)
+    app.get('/adm/boletim',authController.verificaToken,(req,res)=>{
+        boletimController.createBoletim(req,res)
         res.send('tentei cara;/')
     })
     
     app.get('/adm/listarBoletins',async (req ,res )=>{
-        await boCont.BoletimList( req, res)
+        await boletimController.BoletimList( req, res)
     })
 
     app.get('/adm/listaByID', async (req, res)=>{
-        await boCont.boletimByID(req, res)
+        await boletimController.boletimByID(req, res)
     })
 
     app.get('/adm/listByID/:IDBoletim',verificaToken, async(req, res) => {
-        console.log("buscou por id >>")
-        await boCont.boletimByID(req, res)
+        await boletimController.boletimByID(req, res)
       })
 
     app.get('/adm/listByNumero/:NumeroBoletim',verificaToken , async(req, res) => {
-    await boCont.boletimByNumero(req, res)
+    await boletimController.boletimByNumero(req, res)
     })
 
     app.get('/adm/listByNumeroECidade/:NumeroBoletim/:cidade',verificaToken , async(req, res) => {
-    await boCont.boletimByNumeroECidade(req, res)
+    await boletimController.boletimByNumeroECidade(req, res)
     })
 
     app.post('/adm/salvarBoletim', async (req,res)=>{
-        await boCont.createBoletim(req,res)
+        await boletimController.createBoletim(req,res)
     })
 
 
@@ -65,7 +65,7 @@ function route (app){
     //Recebe o ID do usuario via GET 
     //listaMeusBos()
     app.get('/adm/listaMeusBos/:id', async (req,res)=>{
-        await boCont.listaMeusBos(req, res)
+        await boletimController.listaMeusBos(req, res)
     })
     
 

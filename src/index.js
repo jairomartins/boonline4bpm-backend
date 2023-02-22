@@ -6,15 +6,7 @@ const port = process.env.PORT
 console.log(process.env.MONGO)
 
 const express = require('express')
-
 const bodyParser = require('body-parser')
-
-const route = require('./http/route')
-
-const userRoute = require('./http/userRoute')
-
-const boRoute = require('./http/boletimRoute')
-
 const cors = require('cors')// define de onde são permitidas as requisições. default = todos os lugares
 
 app = express()
@@ -25,14 +17,11 @@ app.use(bodyParser.json())
 
 app.use(bodyParser.urlencoded({extended:false})) //entender quando passar parametro via url
 
-route(app)
+require('./http/route')(app)
+require('./http/boletimRoute')(app)
+require('./http/userRoute')(app)
+require('./http/authRouter')(app)
 
-userRoute(app)
-
-boRoute(app)
-
-require('./controllers/authController')(app)
-
-app.listen(433,()=>{
+app.listen(port,()=>{
     console.log('Online  in http://localhost:433')
 })
