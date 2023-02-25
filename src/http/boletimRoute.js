@@ -46,8 +46,12 @@ function route (app){
     })
     
 
-    app.get('/adm/countBoletins/:id', async (req,res)=>{
+    app.get('/adm/countBoletins/', async (req,res)=>{
         await boletimController.countBoletim(req, res)
+    })
+
+    app.get('/adm/naturezaListBoletins/', async (req,res)=>{
+        await boletimController.natuzeraListBoletim(req, res)
     })
 
 }

@@ -81,3 +81,7 @@ exports.countBoletim = async (req, res) =>{
     console.log(quantidadeBoletins)
     return res.status(200).send(JSON.stringify(quantidadeBoletins))
 }
+
+exports.natuzeraListBoletim = async (req, res) =>{
+    return await Boletim.distinct("natureza")
+}
