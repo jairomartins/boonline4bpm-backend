@@ -3,7 +3,7 @@ const authController = require('../controllers/authController')
 
 
 // verifica o token no headers da requisição 
-const {verificaToken} = require('../lib/jwtconfig')
+const {verificaToken} = require('../lib/jwtConfig')
 
 
 function route (app){
