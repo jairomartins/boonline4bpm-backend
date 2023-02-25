@@ -1,6 +1,6 @@
 
 const authController = require('../controllers/authController')
-const {verificaToken} = require('../lib/jwtConfig')
+const {verificaToken} = require('../lib/jwtconfig')
 
 function route (app){
 
