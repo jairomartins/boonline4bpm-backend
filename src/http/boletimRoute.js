@@ -46,6 +46,10 @@ function route (app){
     })
     
 
+    app.get('/adm/countBoletins/:id', async (req,res)=>{
+        await boletimController.countBoletim(req, res)
+    })
+
 }
 
 module.exports = route

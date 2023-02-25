@@ -73,3 +73,11 @@ exports.listaMeusBos = async (req, res)=>{
     console.log(result.numero)
     res.status(200).send(JSON.stringify(result))
 }
+
+
+//Consta quantos boletins existem cadastrados 
+exports.countBoletim = async (req, res) =>{
+    const quantidadeBoletins = await Boletim.count()
+    console.log(quantidadeBoletins)
+    return res.status(200).send(JSON.stringify(quantidadeBoletins))
+}
