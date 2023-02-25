@@ -1,37 +1,14 @@
-
 const boletimController = require('../controllers/boletimController')
 const authController = require('../controllers/authController')
 
-const jwt = require('jsonwebtoken')
-const SECRET_PASSWORD_TOKEN = process.env.SECRET_PASSWORD_TOKEN
 
 // verifica o token no headers da requisição 
-const verificaToken = (req, res, next)=>{
-
-    const token = req.headers["x-access-token"]
-    if(!token){
-        
-        res.json({error:"você precisa de um token"})
-    }else{
-        console.log("token valido")
-        jwt.verify(token,SECRET_PASSWORD_TOKEN, (err,decoded)=>{
-            if(err){
-                console.log("erro no token  - boletimROuter - verificar token")
-                res.json({auth:false, status:"falha ao autenticar o token"})
-            }else{
-                console.log("esta tudo ok no token ")
-                
-                   next()
-    
-            }
-        })
-    }
-}
+const {verificaToken} = require('../lib/jwtconfig')
 
 
 function route (app){
 
-    app.get('/adm/boletim',authController.verificaToken,(req,res)=>{
+    app.get('/adm/boletim',verificaToken,(req,res)=>{
         boletimController.createBoletim(req,res)
         res.send('tentei cara;/')
     })

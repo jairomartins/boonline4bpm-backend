@@ -1,5 +1,6 @@
 
 const authController = require('../controllers/authController')
+const {verificaToken} = require('../lib/jwtConfig')
 
 function route (app){
 
@@ -12,7 +13,7 @@ function route (app){
     })
 
     app.get('/isUserAuth', async (req, res)=>{
-        authController.verificaToken(req, res);
+        verificaToken(req,res)
     })
 
 }
