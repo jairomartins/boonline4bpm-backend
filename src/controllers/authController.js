@@ -1,7 +1,7 @@
 require('dotenv').config()
 const bcrypt = require('bcryptjs')
 const User = require('../model/user')
-const {gerarToken} = require('../lib/jwtConfig')
+const {gerarToken} = require('../lib/jwtconfig')
 
 exports.register = async (req, res) =>{
 
