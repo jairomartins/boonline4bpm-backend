@@ -50,16 +50,25 @@ exports.removeBoletimByID = async( req, res)=>{
 }
 
 
-// Registra no banco de dados um novo boletim de ocorrência
+// Registra ou Atualiza no banco de dados um novo boletim de ocorrência
 //
 //
 //
 exports.createBoletim = async(req, res)=>{
-    try{
-        const newBoletim = await Boletim.create(req.body.boletim)
-        return res.status(200).send(JSON.stringify(newBoletim))
-    }catch(err){
-        return res.status(401).send({error:'Registration failed'})
+    Boletim.findOneAndUpdate(
+        {numero: req.body.boletim.numero, data : req.body.boletim.data},//critério de pesquisa. verifica se ja existe o boletim no banco de dados
+        {$set:req.body.boletim},
+        { upsert: true, new: true },
+        onBoletimUpdate
+    )
+}
+
+function onBoletimUpdate(err, boletim) {
+    if (err) throw err;
+    if (!boletim) {
+      console.log('Novo documento criado!');
+    } else {
+      console.log('Documento atualizado!');
     }
 }
 

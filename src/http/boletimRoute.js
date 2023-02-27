@@ -37,10 +37,22 @@ function route (app){
         await boletimController.createBoletim(req,res)
     })
 
+    app.post('/adm/boletim/create', async (req, res)=>{
+        // TODO - salvar boletim de ocorrencia de acordo com o numero repassado
+    })
 
-    //Lista boletins que incluem o usuario logado como parte do efetivo empregado
-    //Recebe o ID do usuario via GET 
-    //listaMeusBos()
+    app.post('/adm/boletim/search', async (req, res)=>{
+        // TODO - buscar boletim de ocorrencia de acordo com o numero repassado
+    })
+
+    app.post('/adm/boletim/update', async (req, res)=>{
+        // TODO - atualizar boletim de ocorrencia de acordo com o numero repassado
+    })
+
+    app.post('/adm/boletim/delete', async (req, res)=>{
+        // TODO - remover boletim de ocorrencia de acordo com o numero repassado
+    })
+
     app.get('/adm/listaMeusBos/:id', async (req,res)=>{
         await boletimController.listaMeusBos(req, res)
     })
