@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs')
 const User = require('../model/user')
 const {gerarToken} = require('../lib/jwtconfig')
 
+
 exports.register = async (req, res) =>{
 
     const user = await User.findOne({
@@ -31,8 +32,6 @@ exports.register = async (req, res) =>{
 
 }
 
-
-//faz o login de usuarios
 exports.login = async(req,res)=>{
     const {userEmail, userPassword} = req.body
     try{
