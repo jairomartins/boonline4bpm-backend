@@ -1,40 +1,22 @@
 const boletimController = require('../controllers/boletimController')
-const authController = require('../controllers/authController')
 
+// TODO - VERIFICAR O TOKEN ANTES DE EXECUTAR FUNÇÃO 
 
-// verifica o token no headers da requisição 
 const {verificaToken} = require('../lib/jwtconfig')
 
 
 function route (app){
-
-    app.get('/adm/boletim',verificaToken,(req,res)=>{
-        boletimController.createBoletim(req,res)
-        res.send('tentei cara;/')
-    })
-    
-    app.get('/adm/listarBoletins',async (req ,res )=>{
+ 
+    app.get('/adm/boletim/list',async (req ,res )=>{
         await boletimController.BoletimList( req, res)
     })
 
-    app.get('/adm/listaByID', async (req, res)=>{
+    app.get('/adm/boletim/listByID/:IDBoletim',async(req, res) => {
         await boletimController.boletimByID(req, res)
     })
 
-    app.get('/adm/listByID/:IDBoletim',verificaToken, async(req, res) => {
-        await boletimController.boletimByID(req, res)
-      })
-
-    app.get('/adm/listByNumero/:NumeroBoletim',verificaToken , async(req, res) => {
-    await boletimController.boletimByNumero(req, res)
-    })
-
-    app.get('/adm/listByNumeroECidade/:NumeroBoletim/:cidade',verificaToken , async(req, res) => {
+    app.get('/adm/boletim/list/:numeroBoletim/:cidade', async(req, res) => {
     await boletimController.boletimByNumeroAndCidade(req, res)
-    })
-
-    app.post('/adm/salvarBoletim', async (req,res)=>{
-        await boletimController.createBoletim(req,res)
     })
 
     app.post('/adm/boletim/create', async (req, res)=>{
@@ -60,18 +42,12 @@ function route (app){
     app.get('/adm/boletim/list/:id', async (req,res)=>{
         await boletimController.listaMeusBos(req, res)
     })
-
-    app.get('/adm/listaMeusBos/:id', async (req,res)=>{
-        await boletimController.listaMeusBos(req, res)
-    })
     
-
-
-    app.get('/adm/countBoletins/', async (req,res)=>{
+    app.get('/adm/boletim/count/', async (req,res)=>{
         await boletimController.countBoletim(req, res)
     })
 
-    app.get('/adm/naturezaListBoletins/', async (req,res)=>{
+    app.get('/adm/boletim/naturezaList/', async (req,res)=>{
         await boletimController.natuzeraListBoletim(req, res)
     })
 
