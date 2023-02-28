@@ -30,7 +30,7 @@ function route (app){
     })
 
     app.get('/adm/listByNumeroECidade/:NumeroBoletim/:cidade',verificaToken , async(req, res) => {
-    await boletimController.boletimByNumeroECidade(req, res)
+    await boletimController.boletimByNumeroAndCidade(req, res)
     })
 
     app.post('/adm/salvarBoletim', async (req,res)=>{
@@ -38,25 +38,34 @@ function route (app){
     })
 
     app.post('/adm/boletim/create', async (req, res)=>{
-        // TODO - salvar boletim de ocorrencia de acordo com o numero repassado
+        await boletimController.createBoletim(req, res)
     })
 
-    app.post('/adm/boletim/search', async (req, res)=>{
-        // TODO - buscar boletim de ocorrencia de acordo com o numero repassado
+    app.post('/adm/boletim/search/:numero', async (req, res)=>{
+        // buscar boletim de ocorrencia de acordo com o numero repassado
+        await boletimController.boletimByNumero(req,res)
     })
 
     app.post('/adm/boletim/update', async (req, res)=>{
-        // TODO - atualizar boletim de ocorrencia de acordo com o numero repassado
+        // atualizar boletim de ocorrencia de acordo com o numero repassado
+        await boletimController.createBoletim(req,res)
     })
 
-    app.post('/adm/boletim/delete', async (req, res)=>{
+    app.post('/adm/boletim/delete/:id', async (req, res)=>{
         // TODO - remover boletim de ocorrencia de acordo com o numero repassado
+        await boletimController.removeBoletimByID(req,res)
+    })
+
+    // lista boletins de um usuario pelo id do policial empregado no efetivo
+    app.get('/adm/boletim/list/:id', async (req,res)=>{
+        await boletimController.listaMeusBos(req, res)
     })
 
     app.get('/adm/listaMeusBos/:id', async (req,res)=>{
         await boletimController.listaMeusBos(req, res)
     })
     
+
 
     app.get('/adm/countBoletins/', async (req,res)=>{
         await boletimController.countBoletim(req, res)
