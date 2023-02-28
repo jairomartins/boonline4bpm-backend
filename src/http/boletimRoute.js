@@ -48,7 +48,11 @@ function route (app){
     })
 
     app.get('/adm/boletim/naturezaList/', async (req,res)=>{
-        await boletimController.natuzeraListBoletim(req, res)
+        await boletimController.naturezaListBoletim(req, res)
+    })
+
+    app.get('/adm/boletim/naturezaRanking/', async (req,res)=>{
+        await boletimController.naturezaRanking(req, res)
     })
 
 }

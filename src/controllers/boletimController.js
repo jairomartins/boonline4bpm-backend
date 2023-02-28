@@ -102,6 +102,27 @@ exports.countBoletim = async (req, res) =>{
     return res.status(200).send(JSON.stringify(quantidadeBoletins))
 }
 
-exports.natuzeraListBoletim = async (req, res) =>{
-    return await Boletim.distinct("natureza")
+exports.naturezaListBoletim = async (req, res) =>{
+    const naturezaList = await Boletim.distinct("natureza")
+    return res.status(200).send(JSON.stringify(naturezaList))
+}
+
+
+exports.naturezaRanking = async (req, res) =>{
+
+    const rankingOcorrencia = await Boletim.aggregate([
+    {
+        $group : {
+            _id: "$natureza",
+            count: {$sum:1}
+        }
+    },
+
+    {
+        $sort:{count :-1}
+    },
+
+    ])
+
+    return res.status(200).send(JSON.stringify(rankingOcorrencia))
 }
