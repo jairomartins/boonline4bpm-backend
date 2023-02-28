@@ -146,7 +146,7 @@ exports.naturezaRankingByYear = async (req, res)=>{
             },
             {
                 $group : {
-                    _id: "/$natureza/i",
+                    _id: "$natureza",
                     count: {$sum:1}
                 }
             },
