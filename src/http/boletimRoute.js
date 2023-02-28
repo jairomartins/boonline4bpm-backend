@@ -55,6 +55,10 @@ function route (app){
         await boletimController.naturezaRanking(req, res)
     })
 
+    app.get('/adm/boletim/naturezaRankingByYear/:ano', async (req,res)=>{
+        await boletimController.naturezaRankingByYear(req, res)
+    })
+
 }
 
 module.exports = route
