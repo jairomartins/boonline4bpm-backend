@@ -16,7 +16,7 @@ function route (app){
     })
 
     app.get('/adm/boletim/list/:numeroBoletim/:cidade', async(req, res) => {
-    await boletimController.boletimByNumeroAndCidade(req, res)
+        await boletimController.boletimByNumeroAndCidade(req, res)
     })
 
     app.post('/adm/boletim/create', async (req, res)=>{
