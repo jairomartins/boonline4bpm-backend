@@ -55,9 +55,19 @@ function route (app){
         await boletimController.naturezaRanking(req, res)
     })
 
+    app.get('/adm/boletim/dia/:dia', async (req,res)=>{
+        await boletimController.boletimListByDay(req, res)
+    })
+
     app.get('/adm/boletim/naturezaRankingByYear/:ano', async (req,res)=>{
         await boletimController.naturezaRankingByYear(req, res)
     })
+
+    app.get('/adm/boletim/naturezaRankingByMonth/:ano/:mes', async (req,res)=>{
+        await boletimController.naturezaRankingByMonth(req, res)
+    })
+
+
 
 }
 
