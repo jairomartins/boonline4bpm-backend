@@ -11,38 +11,39 @@ function route (app){
         await boletimController.BoletimList( req, res)
     })
 
-    app.get('/adm/boletim/listByID/:IDBoletim',async(req, res) => {
+    app.get('/adm/boletim/listByID/:IDBoletim', verificaToken,async(req, res) => {
         await boletimController.boletimByID(req, res)
     })
 
-    app.get('/adm/boletim/list/:numeroBoletim/:cidade', async(req, res) => {
+    app.get('/adm/boletim/list/:numeroBoletim/:cidade', verificaToken, async(req, res) => {
         await boletimController.boletimByNumeroAndCidade(req, res)
     })
 
-    app.post('/adm/boletim/create', async (req, res)=>{
+    app.post('/adm/boletim/create', verificaToken, async (req, res)=>{
         await boletimController.createBoletim(req, res)
     })
 
-    app.post('/adm/boletim/search/:numero', async (req, res)=>{
+    app.post('/adm/boletim/search/:numero', verificaToken, async (req, res)=>{
         // buscar boletim de ocorrencia de acordo com o numero repassado
         await boletimController.boletimByNumero(req,res)
     })
 
-    app.post('/adm/boletim/update', async (req, res)=>{
+    app.post('/adm/boletim/update', verificaToken, async (req, res)=>{
         // atualizar boletim de ocorrencia de acordo com o numero repassado
         await boletimController.createBoletim(req,res)
     })
 
-    app.post('/adm/boletim/delete/:id', async (req, res)=>{
-        // TODO - remover boletim de ocorrencia de acordo com o numero repassado
+    app.post('/adm/boletim/delete/:id', verificaToken, async (req, res)=>{
         await boletimController.removeBoletimByID(req,res)
     })
 
     // lista boletins de um usuario pelo id do policial empregado no efetivo
-    app.get('/adm/boletim/list/:id', async (req,res)=>{
+    app.get('/adm/boletim/list/:id',verificaToken ,async (req,res)=>{
         await boletimController.listaMeusBos(req, res)
     })
     
+
+    //disponivel nivel mais alto - ainda nao implementado no front
     app.get('/adm/boletim/count/', async (req,res)=>{
         await boletimController.countBoletim(req, res)
     })
