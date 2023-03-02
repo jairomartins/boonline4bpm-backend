@@ -2,16 +2,18 @@ require('dotenv').config()
 const bcrypt = require('bcryptjs')
 const User = require('../model/user')
 const {gerarToken} = require('../lib/jwtconfig')
+const {sendMailConfirm,sendMailRecoverPassword} =require('../lib/nodemailerconfig')
 
 
 exports.register = async (req, res) =>{
-
+    console.log('entrou no auth REGISTER ---')
     const user = await User.findOne({
         userEmail: req.body.userEmail
-        })
+    })
     
-    if(user){
-        return res.status(400).send({status:"Já existe um usuario cadastrado com esse Email!"})
+    console.log(user!=null)
+    if(user!=null){
+        return res.status(400).send({message:"Já existe um usuario cadastrado com esse Email!"})
     }
 
     try{
@@ -23,11 +25,14 @@ exports.register = async (req, res) =>{
             userPassword:hashedPassword,
             userContato,
             userMatriculaId,
-            tipo})
-        return res.status(200).send({status:'Usuario '+user.userName+' registrado com sucesso'})   
+            tipo
+        })
+
+        sendMailConfirm(userEmail, user._id)
+        return res.status(200).send({message:'Usuario '+user.userName+' registrado com sucesso confirme o cadastro no  seu email'})   
     }catch(err){
         console.log(err)
-        return res.status(400).send({status:"Erro ao Registrar o usuário, verifique se os dados estão preenchidos corretamente !"})
+        return res.status(400).send({message:"Erro ao Registrar o usuário, verifique se os dados estão preenchidos corretamente !"})
     }
 
 }
@@ -50,4 +55,26 @@ exports.login = async(req,res)=>{
         console.log(err)
         return res.status(400).json({status:"Error : Não foi possivel conectar ao servidor !",authenticated:false})
     }
+}
+
+exports.recoverPassword = async(req,res)=>{
+    try {
+        const user = await User.findOne({
+            userEmail: req.body.userEmail
+        }) 
+
+        if (!user){
+            
+            return res.status(400).json({message:"Error : O usuario com este email ainda não está cadastrado!"})
+        }else{
+            const isMatch = await bcrypt.compare(userPassword,user.userPassword)
+            sendMailRecoverPassword(req.body.userEmail,user)
+        }
+    } catch (error) {
+        
+    }
+    
+
+
+
 }

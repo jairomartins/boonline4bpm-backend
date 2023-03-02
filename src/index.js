@@ -5,6 +5,8 @@ const port = process.env.PORT
 
 console.log(process.env.MONGO)
 
+// const email = require('./lib/nodemailerconfig')
+
 const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')// define de onde são permitidas as requisições. default = todos os lugares

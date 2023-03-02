@@ -20,6 +20,10 @@ function userRoute(app){
     app.put('/users/:id',verificaToken,async (req, res)=>{
         await userController.userUpdate(req, res)
     })
+
+    app.get('/users/confirm/:id',async (req, res)=>{
+        await userController.userActive(req, res)
+    })
     
 }
 

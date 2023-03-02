@@ -25,6 +25,10 @@ const UserSchema = new mongoose.Schema({
     tipo:{
         type:String,
         default:"comum"
+    },
+    isAtivo:{
+        type:String,
+        default:false
     }
 },{
     timestamps:true
