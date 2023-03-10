@@ -64,11 +64,10 @@ exports.recoverPassword = async(req,res)=>{
         }) 
 
         if (!user){
-            
             return res.status(400).json({message:"Error : O usuario com este email ainda não está cadastrado!"})
         }else{
-            // const isMatch = await bcrypt.compare(userPassword,user.userPassword)
-            sendMailRecoverPassword(user)
+            await sendMailRecoverPassword(user)
+            return res.status(200).json({message:"Sucesso : Verifique o link enviado para seu email"})
         }
     } catch (error) {
         console.log(error)
