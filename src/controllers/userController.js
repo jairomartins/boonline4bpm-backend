@@ -101,7 +101,7 @@ exports.userUpdatePassword = async (req, res) =>{
             {_id : req.body.userId},
             { $set :{userPassword:hashedPassword}},
         )
-        return
+        return res.status(200).send({message: "Parabéns, senha alterada com sucesso!"})
     }catch(err){
         return res.status(500).send({message: "Erro no servidor"})
     }
