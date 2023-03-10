@@ -42,18 +42,18 @@ exports.login = async(req,res)=>{
     try{
         const user = await User.findOne({userEmail})
         if (!user){
-            return res.status(400).json({status:"Error : O usuario com este email ainda não está cadastrado!", user:null})
+            return res.status(400).json({message:"Error : O usuario com este email ainda não está cadastrado!", user:null})
         }
         const isMatch = await bcrypt.compare(userPassword,user.userPassword)
         if(isMatch){
             const token = gerarToken({userEmail:userEmail})
-            return res.json({status:"ok",authenticated:true, token: token})
+            return res.json({status:"Login feito com sucesso!",authenticated:true, token: token})
         }else{
-            return res.status(400).json({status:"Error : A Senha está incorreta !"})
+            return res.status(400).json({message:"Error : A Senha está incorreta !"})
         }
     }catch(err){
         console.log(err)
-        return res.status(400).json({status:"Error : Não foi possivel conectar ao servidor !",authenticated:false})
+        return res.status(400).json({message:"Error : Não foi possivel conectar ao servidor !",authenticated:false})
     }
 }
 

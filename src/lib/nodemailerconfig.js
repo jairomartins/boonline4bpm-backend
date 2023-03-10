@@ -40,7 +40,7 @@ exports.sendMailRecoverPassword = async (user)=>{
         to: user.userEmail,
         subject: 'Recuperação de senha BOLETIM ONLINE',
         html: '<p>Você solicitou a sua senha do Boletim Online 4BPM:</p>' +
-            `<a href="http://${process.env.BASE_URL}/passwordrecover/${user.id}">Confirmar cadastro</a>` +
+            `<a href="http://${process.env.BASE_URL}/passwordrecover/${user.id}">Redefinir Senha</a>` +
             '<p><i>Criado por: SD Jmartins ID 871110 PMMA</i></p>'
     };
     
