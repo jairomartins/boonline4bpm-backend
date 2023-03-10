@@ -2,7 +2,7 @@
 
 // const { json } = require('body-parser')
 const user = require('../model/user')
-
+const bcrypt = require('bcryptjs')
 const {sendMailUpdatePassword} =require('../lib/nodemailerconfig')
 
 exports.userList = async (req, res)=>{
@@ -14,7 +14,7 @@ exports.userCreate = async (req, res) =>{
     try{
         return user.create(req.bod, function (err,user){
             if(err){
-                return res.status(400).send({message: "Não foi possivel registrar o usuario"})
+                return res.status(400).send({message: "Não foi possivel registrar o usuario ..."})
             }else{
                 return res.status(200).send({message: "Usuario criado com sucesso verifique seu email para ativação da conta"})
             }
@@ -53,6 +53,8 @@ exports.userUpdate = async (req, res) =>{
     
 }
 
+ 
+
 exports.userActive = async (req, res) =>{
     console.log(req.params)
     try{
@@ -83,6 +85,25 @@ exports.userUpdatePasswordSendEmail = async (req, res) =>{
             console.log(error)
         }
         
+    }
+    
+}
+
+
+exports.userUpdatePassword = async (req, res) =>{
+    console.log('usercontrole userUpdatePasswor')
+    console.log(req.body)
+
+    const hashedPassword = await bcrypt.hash(req.body.userPassword,10)
+    console.log(hashedPassword)
+    try{
+        const result  = await user.updateOne(
+            {_id : req.body.userId},
+            { $set :{userPassword:hashedPassword}},
+        )
+        return
+    }catch(err){
+        return res.status(500).send({message: "Erro no servidor"})
     }
     
 }

@@ -32,16 +32,16 @@ exports.sendMailConfirm = async (destinatario, id)=>{
     })
 }
 
-exports.sendMailRecoverPassword = async (destinatario, senha)=>{
+exports.sendMailRecoverPassword = async (user)=>{
     
 
     let mailOptions = {
         from: 'boonlinema@gmail.com',
-        to: destinatario,
+        to: user.userEmail,
         subject: 'Recuperação de senha BOLETIM ONLINE',
         html: '<p>Você solicitou a sua senha do Boletim Online 4BPM:</p>' +
-              `sua senha : <b>${senha}<b/>` +
-              '<p><i>Criado por: SD Jmartins ID 871110 PMMA</i></p>'
+            `<a href="http://${process.env.BASE_URL}/passwordrecover/${user.id}">Confirmar cadastro</a>` +
+            '<p><i>Criado por: SD Jmartins ID 871110 PMMA</i></p>'
     };
     
     transporter.sendMail(mailOptions, function(error, info){
