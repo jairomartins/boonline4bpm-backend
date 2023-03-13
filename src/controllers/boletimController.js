@@ -163,3 +163,50 @@ exports.naturezaRankingByYear = async (req, res)=>{
             return res.status(200).send({message:"Erro interno, não foi possível realizar a busca", err}) 
     }
 }
+
+exports.naturezaRankingByMonth = async (req, res)=>{
+    try{
+        const ano = req.params.ano
+        const mes = req.params.mes
+        const rankingOcorrencia = await Boletim.aggregate([
+            {
+                $addFields: { // adicionar um novo campo "dataRegistroObj" com o objeto de data
+                dataRegistroObj: {
+                    $dateFromString: {
+                    dateString: "$data",
+                    format: "%d/%m/%Y"
+                    }
+                }
+                }
+            },
+            {
+                $match: { dataRegistroObj: { $gte: new Date(`${ano}-${mes}-01`), $lte: new Date(`${ano}-${mes}-31`)  } } 
+            },
+            {
+                $group : {
+                    _id: "$natureza",
+                    count: {$sum:1}
+                }
+            },
+        
+            {
+                $sort:{count :-1}
+            },
+        
+            ])
+        
+            return res.status(200).send(JSON.stringify(rankingOcorrencia)) 
+    }catch(err){
+            console.log(err)
+            return res.status(200).send({message:"Erro interno, não foi possível realizar a busca", err}) 
+    }
+}
+
+exports.boletimListByDay = async( req, res)=>{
+    try {
+        const result = await Boletim.find({data: req.params.data})
+        return res.status(200).send(JSON.stringify(result))
+    } catch (err) {
+        return res.status(500).send({message:"Boletim não encontrado", error:err})     
+    } 
+}
