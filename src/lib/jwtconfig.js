@@ -7,12 +7,13 @@ const verificaToken = (req, res, next) => {
     const token = req.headers[TOKEN_HEADER]
     try{
         if(!token){
-            res.json({message:"você precisa de um token"})
+            return res.json({message:"você precisa de um token"})
         }else{
             jwt.verify(token,SECRET_PASSWORD_TOKEN, (err,decoded)=>{
                 if(err){
                     console.log("Erro na verificação do token:", err);
                     return res.status(401).json({ message: "Falha ao autenticar o token", auth:false});
+                    next()
                 }else{
                     console.log("Token valido !")
                     next()

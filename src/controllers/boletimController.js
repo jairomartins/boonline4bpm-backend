@@ -29,8 +29,10 @@ exports.boletimByID = async (req, res)=>{
 }
 
 exports.boletimByNumero = async (req, res)=>{
+    console.log(req.body.numero)
     try{
-        const result = await Boletim.findOne({numero: req.params.NumeroBoletim}).sort({'_id':-1})
+        const result = await Boletim.findOne({numero: req.params.numero}).sort({'_id':-1})
+        console.log(result)
         return res.status(200).send(JSON.stringify(result))
     }catch(err){
         return res.status(500).send({message:"Boletim não encontrado", error:err}) 
@@ -38,9 +40,11 @@ exports.boletimByNumero = async (req, res)=>{
 }
 
 exports.boletimByNumeroAndCidade = async (req, res)=>{
+    console.log("Executando :boletimByNumeroAndCidade")
     try {
-        const result = await Boletim.findOne({numero: req.params.NumeroBoletim, municipio:req.params.cidade}).sort({'_id':-1})
-        return res.status(200).send(JSON.stringify(result))
+        const result = await Boletim.findOne({numero: req.params.numero, municipio: req.params.municipio}).sort({'_id':-1})
+        console.log(result)
+        res.status(200).send(JSON.stringify(result))
     } catch (err) {
         return res.status(500).send({message:"Boletim não encontrado", error:err})    
     }    

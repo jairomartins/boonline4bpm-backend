@@ -15,7 +15,7 @@ function route (app){
         await boletimController.boletimByID(req, res)
     })
 
-    app.get('/adm/boletim/list/:numeroBoletim/:cidade', verificaToken, async(req, res) => {
+    app.get('/adm/boletim/list/:numero/:municipio', verificaToken,  async(req, res) => {
         await boletimController.boletimByNumeroAndCidade(req, res)
     })
 
@@ -23,7 +23,7 @@ function route (app){
         await boletimController.createBoletim(req, res)
     })
 
-    app.post('/adm/boletim/search/:numero', verificaToken, async (req, res)=>{
+    app.get('/adm/boletim/search/:numero', verificaToken, async (req, res)=>{
         // buscar boletim de ocorrencia de acordo com o numero repassado
         await boletimController.boletimByNumero(req,res)
     })
