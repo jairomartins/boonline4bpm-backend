@@ -22,6 +22,10 @@ function route (app){
         verificaToken(req,res)
     })
 
+    app.get('/passwordrecover/:userId', async (req, res)=>{
+        authController.passwordFormUpdate(req, res)
+    })
+
 }
 
 module.exports = route

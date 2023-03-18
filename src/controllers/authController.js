@@ -72,8 +72,17 @@ exports.recoverPassword = async(req,res)=>{
     } catch (error) {
         console.log(error)
     }
-    
 
+}
 
+exports.passwordFormUpdate = async(req,res)=>{
 
+    const form = `
+    <form method="post" action=/recoverPassword/>
+      <label for="password">Digite a nova senha :</label>
+      <input type="password" id="password" name="userPassword">
+      <button type="submit">Confirmar alteração de senha</button>
+    </form>
+  `
+    return res.send(form)
 }
