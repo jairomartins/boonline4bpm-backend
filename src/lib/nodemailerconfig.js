@@ -23,7 +23,7 @@ exports.sendMailConfirm = async (destinatario, id)=>{
               '<p><i>Criado por: SD Jmartins ID 871110 PMMA</i></p>'
     };
     
-    transporter.sendMail(mailOptions, function(error, info){
+    await transporter.sendMail(mailOptions, function(error, info){
         if(error){
             console.log(error);
         }else{
@@ -42,7 +42,7 @@ exports.sendMailRecoverPassword = async (user)=>{
             '<p><i>Criado por: SD Jmartins ID 871110 PMMA</i></p>'
     };
     
-    transporter.sendMail(mailOptions, function(error, info){
+    await transporter.sendMail(mailOptions, function(error, info){
         if(error){
             console.log(error);
         }else{

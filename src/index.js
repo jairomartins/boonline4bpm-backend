@@ -25,5 +25,5 @@ require('./http/userRoute')(app)
 require('./http/authRouter')(app)
 
 app.listen(port,()=>{
-    console.log(`Online  in http://localhost:${port}`)
+    console.log(`Online  in http://${process.env.BASE_URL}:${port}`)
 })
