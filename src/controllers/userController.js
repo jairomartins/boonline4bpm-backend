@@ -92,8 +92,7 @@ exports.userUpdatePasswordSendEmail = async (req, res) =>{
 
 exports.userUpdatePassword = async (req, res) =>{
     console.log('usercontrole userUpdatePasswor')
-    console.log(req.body)
-
+ 
     const hashedPassword = await bcrypt.hash(req.body.userPassword,10)
     console.log(hashedPassword)
     try{
