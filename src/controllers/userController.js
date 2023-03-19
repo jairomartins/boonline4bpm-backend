@@ -12,7 +12,7 @@ exports.userList = async (req, res)=>{
 
 exports.userCreate = async (req, res) =>{
     try{
-        return user.create(req.bod, function (err,user){
+        return user.create(req.body, function (err,user){
             if(err){
                 return res.status(400).send({message: "Não foi possivel registrar o usuario ..."})
             }else{
@@ -98,7 +98,7 @@ exports.userUpdatePassword = async (req, res) =>{
     console.log(hashedPassword)
     try{
         const result  = await user.updateOne(
-            {_id : req.body.userId},
+            {_id : req.params.userId},
             { $set :{userPassword:hashedPassword}},
         )
         return res.status(200).send({message: "Parabéns, senha alterada com sucesso!"})

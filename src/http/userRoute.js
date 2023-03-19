@@ -25,7 +25,7 @@ function userRoute(app){
         await userController.userActive(req, res)
     })
 
-    app.post('/recoverPassword/',async (req, res)=>{
+    app.post('/recoverPassword/:userId',async (req, res)=>{
         console.log('user route /users/recoverPassword ')
         await userController.userUpdatePassword(req, res)
     })
