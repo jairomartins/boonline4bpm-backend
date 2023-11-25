@@ -1,29 +1,34 @@
-require('dotenv').config()
+const https = require('https');
+const fs = require('fs');
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
 
-//const's
-const port = process.env.PORT
+const app = express();
 
-console.log(process.env.MONGO)
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
-// const email = require('./lib/nodemailerconfig')
+// Rotas do seu aplicativo
+require('./http/route')(app);
+require('./http/boletimRoute')(app);
+require('./http/userRoute')(app);
+require('./http/authRouter')(app);
 
-const express = require('express')
-const bodyParser = require('body-parser')
-const cors = require('cors')// define de onde são permitidas as requisições. default = todos os lugares
+// Certificados SSL do Let's Encrypt
+const privateKeyPath = '/etc/letsencrypt/live/jmartins.vps-kinghost.net/privkey.pem';
+const certificatePath = '/etc/letsencrypt/live/jmartins.vps-kinghost.net/fullchain.pem';
 
-app = express()
+const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+const certificate = fs.readFileSync(certificatePath, 'utf8');
 
-app.use(cors())
+const credentials = { key: privateKey, cert: certificate };
 
-app.use(bodyParser.json())
+const httpsServer = https.createServer(credentials, app);
 
-app.use(bodyParser.urlencoded({extended:false})) //entender quando passar parametro via url
+const port = process.env.PORT || 443;
 
-require('./http/route')(app)
-require('./http/boletimRoute')(app)
-require('./http/userRoute')(app)
-require('./http/authRouter')(app)
-
-app.listen(port,()=>{
-    console.log(`Online  in http://${process.env.BASE_URL}:${port}`)
-})
+httpsServer.listen(port, () => {
+    console.log(`Online in https://${process.env.BASE_URL}:${port}`);
+});
