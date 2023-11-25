@@ -20,6 +20,17 @@ require('./http/authRouter')(app);
 const privateKeyPath = '/etc/letsencrypt/live/jmartins.vps-kinghost.net/privkey.pem';
 const certificatePath = '/etc/letsencrypt/live/jmartins.vps-kinghost.net/fullchain.pem';
 
+// Adicionar middleware para redirecionamento HTTP para HTTPS
+app.use((req, res, next) => {
+    if (req.secure) {
+        // A solicitação já é segura, prossiga para a próxima middleware
+        next();
+    } else {
+        // Redirecionar para o mesmo caminho usando HTTPS
+        res.redirect(`https://${req.headers.host}${req.url}`);
+    }
+});
+
 const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
 const certificate = fs.readFileSync(certificatePath, 'utf8');
 
