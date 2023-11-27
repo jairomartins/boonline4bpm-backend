@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+const https = require('https');
+const fs = require('fs');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 
@@ -15,9 +17,22 @@ require('./http/boletimRoute')(app);
 require('./http/userRoute')(app);
 require('./http/authRouter')(app);
 
-
 const port = process.env.PORT || 443;
 
-app.listen(port, () => {
-    console.log(`Online in http://${process.env.BASE_URL}:${port}`);
+// Configurações para HTTPS
+const privateKey = fs.readFileSync('/etc/letsencrypt/live/seu_dominio.com/privkey.pem', 'utf8');
+const certificate = fs.readFileSync('/etc/letsencrypt/live/seu_dominio.com/cert.pem', 'utf8');
+const ca = fs.readFileSync('/etc/letsencrypt/live/seu_dominio.com/chain.pem', 'utf8');
+
+const credentials = {
+  key: privateKey,
+  cert: certificate,
+  ca: ca
+};
+
+// Cria um servidor HTTPS
+const httpsServer = https.createServer(credentials, app);
+
+httpsServer.listen(port, () => {
+  console.log(`Online in https://${process.env.BASE_URL}:${port}`);
 });
