@@ -34,9 +34,9 @@ require('./http/authRouter')(app);
 const httpsPort = process.env.PORT || 443;
 
 // Configurações para HTTPS
-const privateKey = fs.readFileSync('/etc/letsencrypt/live/seu_dominio.com/privkey.pem', 'utf8');
-const certificate = fs.readFileSync('/etc/letsencrypt/live/seu_dominio.com/cert.pem', 'utf8');
-const ca = fs.readFileSync('/etc/letsencrypt/live/seu_dominio.com/chain.pem', 'utf8');
+const privateKey = fs.readFileSync('/etc/letsencrypt/live/jmartins.vps-kinghost.net/privkey.pem', 'utf8');
+const certificate = fs.readFileSync('/etc/letsencrypt/live/jmartins.vps-kinghost.net/cert.pem', 'utf8');
+const ca = fs.readFileSync('/etc/letsencrypt/live/jmartins.vps-kinghost.net/chain.pem', 'utf8');
 
 const credentials = {
   key: privateKey,
