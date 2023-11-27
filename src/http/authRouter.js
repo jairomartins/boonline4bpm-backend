@@ -9,7 +9,7 @@ function route (app){
     })
 
     app.post('/register', async (req, res)=>{
-        console.log('entrou no auth route ---')
+        console.log('entrou no auth route [/register]')
         authController.register(req, res);
     })
 

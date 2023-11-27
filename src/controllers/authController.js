@@ -6,7 +6,7 @@ const {sendMailConfirm,sendMailRecoverPassword} =require('../lib/nodemailerconfi
 
 
 exports.register = async (req, res) =>{
-    console.log('entrou no auth REGISTER ---')
+    console.log('entrou no [auth REGISTER]')
     const user = await User.findOne({
         userEmail: req.body.userEmail
     })
@@ -39,6 +39,8 @@ exports.register = async (req, res) =>{
 
 exports.login = async(req,res)=>{
     const {userEmail, userPassword} = req.body
+
+    console.log('authController.login() - '+req.body.userPassword)
     try{
         const user = await User.findOne({userEmail})
         if (!user){

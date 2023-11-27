@@ -1,8 +1,7 @@
 const jwt = require('jsonwebtoken');
-
 const TOKEN_HEADER = "x-access-token";
 const SECRET_PASSWORD_TOKEN = process.env.SECRET_PASSWORD_TOKEN
-
+console.log('sec tok pas '+SECRET_PASSWORD_TOKEN)
 const verificaToken = (req, res, next) => {
     const token = req.headers[TOKEN_HEADER]
     try{
