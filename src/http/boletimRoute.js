@@ -56,7 +56,7 @@ function route (app){
         await boletimController.naturezaRanking(req, res)
     })
 
-    app.get('/adm/boletim/dia/:dia/:mes/:ano', async (req,res)=>{
+    app.get('/adm/boletim/dia/:dia/:mes/:ano', verificaToken, async (req,res)=>{
         await boletimController.boletimListByDay(req, res)
     })
 
