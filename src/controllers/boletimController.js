@@ -1,5 +1,8 @@
 //controller do boletim
 
+const multer = require('multer')
+const path  = require('fs')
+
 const { json } = require('body-parser')
 const Boletim = require('../model/boletim')
 
@@ -75,7 +78,7 @@ exports.createBoletim = async(req, res)=>{
             {$set:req.body.boletim},
             { upsert: true, new: true },
         )
-        
+
         res.status(200).send({message:"Boletim registrado com sucesso !"}) 
     }catch(err){
         return res.status(500).send({message:"Não foi possivel registrar o boletim, erro no servidor !", err:err})
@@ -208,9 +211,14 @@ exports.naturezaRankingByMonth = async (req, res)=>{
 
 exports.boletimListByDay = async( req, res)=>{
     try {
-        const result = await Boletim.find({data: req.params.data})
+        const result = await Boletim.find({data: `${req.params.dia}/${req.params.mes}/${req.params.ano}`})
         return res.status(200).send(JSON.stringify(result))
     } catch (err) {
         return res.status(500).send({message:"Boletim não encontrado", error:err})     
     } 
+}
+
+exports.uploadPhotos = async(req , res)=>{
+
+
 }
