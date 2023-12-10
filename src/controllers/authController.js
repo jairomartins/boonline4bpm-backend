@@ -49,7 +49,7 @@ exports.login = async(req,res)=>{
         const isMatch = await bcrypt.compare(userPassword,user.userPassword)
         if(isMatch){
             const token = gerarToken({userEmail:userEmail, userMatriculaId: user.userMatriculaId})
-            return res.json({status:"Login feito com sucesso!",authenticated:true, token: token, userID: user.userMatriculaId})
+            return res.json({status:"Login feito com sucesso!",authenticated:true, token: token, userID: user.userMatriculaId, userTipo: user.tipo})
         }else{
             return res.status(400).json({message:"Error : A Senha está incorreta !"})
         }

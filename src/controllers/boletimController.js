@@ -72,6 +72,7 @@ exports.removeBoletimByID = async( req, res)=>{
 //
 //
 exports.createBoletim = async(req, res)=>{
+    console.log(req.files)
     try{
         await Boletim.findOneAndUpdate(
             {numero: req.body.boletim.numero, data : req.body.boletim.data},//critério de pesquisa. verifica se ja existe o boletim no banco de dados

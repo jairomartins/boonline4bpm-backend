@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const https = require('https');
+const http = require('http');
 const fs = require('fs');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -11,42 +12,34 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-// Middleware para redirecionamento de HTTP para HTTPS
-const enforceHttps = (req, res, next) => {
-  if (req.secure) {
-    // A requisição já é HTTPS, não é necessário redirecionar
-    return next();
-  }
-
-  // Redireciona para HTTPS
-  res.redirect(`https://${req.hostname}${req.url}`);
-};
-
-// Adiciona o middleware globalmente
-app.use(enforceHttps);
-
 // Rotas do seu aplicativo
 require('./http/route')(app);
 require('./http/boletimRoute')(app);
 require('./http/userRoute')(app);
 require('./http/authRouter')(app);
 
-const httpsPort = process.env.PORT || 443;
+const port = process.env.PORT || 3000;
 
-// Configurações para HTTPS
-const privateKey = fs.readFileSync('/etc/letsencrypt/live/jmartins.vps-kinghost.net/privkey.pem', 'utf8');
-const certificate = fs.readFileSync('/etc/letsencrypt/live/jmartins.vps-kinghost.net/cert.pem', 'utf8');
-const ca = fs.readFileSync('/etc/letsencrypt/live/jmartins.vps-kinghost.net/chain.pem', 'utf8');
+if (process.env.USE_HTTPS === 'true') {
+  const privateKey = fs.readFileSync('/etc/letsencrypt/live/jmartins.vps-kinghost.net/privkey.pem', 'utf8');
+  const certificate = fs.readFileSync('/etc/letsencrypt/live/jmartins.vps-kinghost.net/cert.pem', 'utf8');
+  const ca = fs.readFileSync('/etc/letsencrypt/live/jmartins.vps-kinghost.net/chain.pem', 'utf8');
 
-const credentials = {
-  key: privateKey,
-  cert: certificate,
-  ca: ca
-};
+  const credentials = {
+    key: privateKey,
+    cert: certificate,
+    ca: ca
+  };
 
-// Cria um servidor HTTPS
-const httpsServer = https.createServer(credentials, app);
+  const httpsServer = https.createServer(credentials, app);
 
-httpsServer.listen(httpsPort, () => {
-  console.log(`Online in https://${process.env.BASE_URL}:${httpsPort}`);
-});
+  httpsServer.listen(port, () => {
+    console.log(`Online in https://${process.env.BASE_URL}:${port}`);
+  });
+} else {
+  const httpServer = http.createServer(app);
+
+  httpServer.listen(port, () => {
+    console.log(`Online in http://${process.env.BASE_URL}:${port}`);
+  });
+}
