@@ -74,6 +74,12 @@ function verificarUsuario (email){
     return user.find({userEmail:email})
 }
 
+exports.buscarUserByMatriculaId = async (req, res)=>{
+    res.send(JSON.stringify( await user.find({userMatriculaId:req.params.id})))
+}
+
+
+
 exports.userUpdatePasswordSendEmail = async (req, res) =>{
     const {email}  = req.params
     const usuario = verificarUsuario(email)

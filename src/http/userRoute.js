@@ -25,6 +25,10 @@ function userRoute(app){
         await userController.userActive(req, res)
     })
 
+    app.get('/user/:id', async (req, res)=>{
+        await userController.buscarUserByMatriculaId(req, res)
+    })
+
     app.post('/recoverPassword/:userId',async (req, res)=>{
         console.log('user route /users/recoverPassword ')
         await userController.userUpdatePassword(req, res)
