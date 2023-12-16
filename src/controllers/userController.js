@@ -47,6 +47,7 @@ exports.userUpdate = async (req, res) =>{
             {userMatriculaId : req.body.userMatriculaId},
             { $set :req.body},
         )
+        return res.status(200).send({message: "Dados Atualizados com Sucesso !"})
     }catch(err){
         return res.status(500).send({message: "Erro no servidor"})
     }
