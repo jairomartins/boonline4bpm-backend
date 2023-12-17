@@ -19,7 +19,7 @@ function route (app){
         await boletimController.boletimByNumeroAndCidade(req, res)
     })
 
-    app.post('/adm/boletim/create', verificaToken, async (req, res)=>{
+    app.post('/adm/boletim/create', async (req, res)=>{
         await boletimController.createBoletim(req, res)
     })
 

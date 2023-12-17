@@ -42,6 +42,7 @@ exports.userDelete = async (req, res) =>{
 
 
 exports.userUpdate = async (req, res) =>{
+    console.log("user update controller >" + req.body.userEmail)
     try{
         const result  = await user.updateOne(
             {userMatriculaId : req.body.userMatriculaId},
@@ -109,7 +110,7 @@ exports.userUpdatePassword = async (req, res) =>{
         )
         return res.status(200).send({message: "Parabéns, senha alterada com sucesso!"})
     }catch(err){
-        return res.status(500).send({message: "Erro no servidor"})
+        return res.status(500).send({message: "Erro no servidor", err})
     }
     
 }

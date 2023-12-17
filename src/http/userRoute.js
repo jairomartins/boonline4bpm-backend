@@ -9,7 +9,7 @@ function userRoute(app){
         await userController.userList(req,res)
     })
 
-    app.delete('/users/:id',async (req, res)=>{
+    app.delete('/users/:id',verificaToken, async (req, res)=>{
         await userController.userDelete(req, res)
     })
 
@@ -17,7 +17,7 @@ function userRoute(app){
         await userController.userCreate(req, res)
     })
 
-    app.put('/users/:id',async (req, res)=>{
+    app.put('/users/:id', verificaToken,async (req, res)=>{
         await userController.userUpdate(req, res)
     })
 
@@ -25,7 +25,7 @@ function userRoute(app){
         await userController.userActive(req, res)
     })
 
-    app.get('/user/:id', async (req, res)=>{
+    app.get('/user/:id',verificaToken, async (req, res)=>{
         await userController.buscarUserByMatriculaId(req, res)
     })
 
