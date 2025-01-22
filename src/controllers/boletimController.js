@@ -72,7 +72,6 @@ exports.removeBoletimByID = async( req, res)=>{
 //
 //
 exports.createBoletim = async(req, res)=>{
-    console.log(req.files)
     try{
         await Boletim.findOneAndUpdate(
             {numero: req.body.boletim.numero, data : req.body.boletim.data},//critério de pesquisa. verifica se ja existe o boletim no banco de dados
@@ -114,6 +113,7 @@ exports.naturezaListBoletim = async (req, res) =>{
     const naturezaList = await Boletim.distinct("natureza")
     return res.status(200).send(JSON.stringify(naturezaList))
 }
+
 
 
 exports.naturezaRanking = async (req, res) =>{
@@ -222,4 +222,16 @@ exports.boletimListByDay = async( req, res)=>{
 exports.uploadPhotos = async(req , res)=>{
 
 
+}
+
+
+// find bo, by city and date
+// return a bo, when match with date and city
+exports.boletimByDateAndCity = async (req, res)=>{
+    try{
+        const result = await Boletim.find({data:`${req.params.day}/${req.params.month}/${req.params.year}`, municipio:`${req.params.city}`})
+        return res.status(200).send(JSON.stringify(result))
+    }catch{
+        return res.status(500).send({message:"Erro a buscar boletim"})
+    }
 }

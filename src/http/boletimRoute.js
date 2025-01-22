@@ -19,6 +19,12 @@ function route (app){
         await boletimController.boletimByNumeroAndCidade(req, res)
     })
 
+
+    //rota para buscar o boletim de uma data especifica na cidade logada.
+    app.get('/adm/boletim/list/:day/:month/:year/:city',   async(req, res) => {
+        await boletimController.boletimByDateAndCity(req, res)
+    })
+
     app.post('/adm/boletim/create', async (req, res)=>{
         await boletimController.createBoletim(req, res)
     })

@@ -29,7 +29,16 @@ const UserSchema = new mongoose.Schema({
     isAtivo:{
         type:String,
         default:false
-    }
+    },
+    userGraduacao:{
+        type:String,
+    },
+    userNumero:{
+        type:String,
+    },
+    userBarra:{
+        type:String,
+    },
 },{
     timestamps:true
 })
