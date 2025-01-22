@@ -42,15 +42,15 @@ exports.userDelete = async (req, res) =>{
 
 
 exports.userUpdate = async (req, res) =>{
-    console.log("user update controller >" + req.body.userEmail)
+    console.log("user update controller >" + req.params.id)
     try{
         const result  = await user.updateOne(
-            {userMatriculaId : req.body.userMatriculaId},
+            {userMatriculaId : req.params.id},
             { $set :req.body},
         )
         return res.status(200).send({message: "Dados Atualizados com Sucesso !"})
     }catch(err){
-        return res.status(500).send({message: "Erro no servidor"})
+        return res.status(500).send({message: "Erro no servidor"})//, err})  
     }
     
 }
