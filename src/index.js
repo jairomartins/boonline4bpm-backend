@@ -17,6 +17,7 @@ require('./http/route')(app);
 require('./http/boletimRoute')(app);
 require('./http/userRoute')(app);
 require('./http/authRouter')(app);
+require('./http/verifyTextRoute')(app);
 
 const port = process.env.PORT || 3000;
 
