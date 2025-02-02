@@ -113,9 +113,7 @@ A API possui os seguintes endpoints:
 ## 📌 Melhorias Futuras  
 
 ✔ Adicionar testes de integração.  
-✔ Melhorar logging de erros.  
-✔ Implementar CI/CD com GitHub Actions.  
-✔ Criar documentação interativa com Swagger.  
+
 
 ---
 
