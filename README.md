@@ -91,15 +91,26 @@ A API possui os seguintes endpoints:
 | `DELETE`| `/users/:id`   | Remove um usuário do sistema |
 
 ---
+### 📂 **Boletim de Ocorrência (BO)**
 
-### 📂 **Ocorrências / BO (Boletim de Ocorrência)**  
-| Método  | Rota                  | Descrição |
-|---------|----------------------|-----------|
-| `GET`   | `/bo`                 | Lista todas as ocorrências registradas |
-| `GET`   | `/bo/:id`             | Obtém detalhes de uma ocorrência específica |
-| `POST`  | `/bo`                 | Cria um novo boletim de ocorrência |
-| `PUT`   | `/bo/:id`             | Atualiza uma ocorrência existente |
-| `DELETE`| `/bo/:id`             | Exclui um boletim de ocorrência |
+| Método  | Rota                            | Descrição                                                                 |
+|---------|---------------------------------|---------------------------------------------------------------------------|
+| `GET`   | `/adm/boletim/list`             | Lista todos os boletins de ocorrência registrados.                        |
+| `GET`   | `/adm/boletim/listByID/:IDBoletim` | Obtém detalhes de um boletim de ocorrência específico pelo ID.            |
+| `GET`   | `/adm/boletim/list/:numero/:municipio` | Obtém boletins de ocorrência filtrados por número e município.             |
+| `GET`   | `/adm/boletim/list/:day/:month/:year/:city` | Busca boletins de ocorrência de acordo com uma data específica e cidade.  |
+| `POST`  | `/adm/boletim/create`           | Cria um novo boletim de ocorrência.                                        |
+| `GET`   | `/adm/boletim/search/:numero`   | Busca boletim de ocorrência pelo número fornecido.                        |
+| `POST`  | `/adm/boletim/update`           | Atualiza um boletim de ocorrência existente.                              |
+| `POST`  | `/adm/boletim/delete/:id`       | Exclui um boletim de ocorrência pelo ID.                                   |
+| `GET`   | `/adm/boletim/list/:id`         | Lista boletins de ocorrência filtrados pelo ID de um policial empregado no efetivo. |
+| `GET`   | `/adm/boletim/count/`           | Contagem total de boletins de ocorrência registrados. (Ainda não implementado no front) |
+| `GET`   | `/adm/boletim/naturezaList/`    | Lista todas as naturezas de boletins de ocorrência registradas.            |
+| `GET`   | `/adm/boletim/naturezaRanking/` | Ranking das naturezas mais comuns nos boletins de ocorrência.              |
+| `GET`   | `/adm/boletim/dia/:dia/:mes/:ano` | Lista boletins de ocorrência filtrados por um dia específico.             |
+| `GET`   | `/adm/boletim/naturezaRankingByYear/:ano` | Ranking das naturezas de boletins de ocorrência por ano.                   |
+| `GET`   | `/adm/boletim/naturezaRankingByMonth/:ano/:mes` | Ranking das naturezas de boletins de ocorrência por mês e ano.             |
+| `GET`   | `/adm/boletim/upload`           | Rota para upload de boletins de ocorrência.                               |
 
 ---
 
