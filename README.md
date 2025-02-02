@@ -5,6 +5,12 @@
 
 ---
 
+### 📚 **Descrição de Funções**:
+- **Boletins de Ocorrência**: O sistema permite consultar, cadastrar, editar e excluir boletins de ocorrência com base em parâmetros como número, município, data e natureza do evento.
+- **Naturezas de Ocorrências**: O sistema permite visualizar e fazer o ranking das naturezas dos boletins de ocorrência, tanto por ano quanto por mês.
+- **Efetivo Policial**: As rotas permitem a consulta de boletins de ocorrência associados aos policiais, facilitando o acompanhamento das ocorrências por agente.
+
+
 ## 📂 Estrutura do Projeto  
 
 A estrutura segue o padrão do NestJS:  
