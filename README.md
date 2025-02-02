@@ -14,9 +14,10 @@ boonline4bpm-backend/
 ├── src/
 │   ├── controllers/      # Controladores que lidam com as requisições HTTP
 │   ├── models/           # Modelos de dados e esquemas
-│   ├── routes/           # Definição das rotas da aplicação
-│   ├── services/         # Lógica de negócios e integração com o banco de dados
+│   ├── http/             # Definição das rotas da aplicação
+│   ├── database/         # Lógica de negócios e integração com o banco de dados
 │   ├── utils/            # Funções utilitárias e helpers
+|   ├── lib/              # Bibliotecas
 │   └── index.js          # Ponto de entrada da aplicação
 ├── .gitignore            # Arquivos e diretórios ignorados pelo Git
 ├── package.json          # Dependências e scripts do projeto
