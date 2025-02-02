@@ -5,37 +5,54 @@ const {gerarToken} = require('../lib/jwtconfig')
 const {sendMailConfirm,sendMailRecoverPassword} =require('../lib/nodemailerconfig')
 
 
-exports.register = async (req, res) =>{
-    console.log('entrou no [auth REGISTER]')
-    const user = await User.findOne({
-        userEmail: req.body.userEmail
-    })
-    
-    console.log(user!=null)
-    if(user!=null){
-        return res.status(400).send({message:"Já existe um usuario cadastrado com esse Email!"})
-    }
-
-    try{
-        const {userName,userEmail,userPassword,userContato,userMatriculaId,tipo} = req.body
-        const hashedPassword = await bcrypt.hash(userPassword,10)
-        const user = await User.create({
+exports.register = async (req, res) => {
+    try {
+        // Desestruturação dos campos do request body
+        let {
             userName,
             userEmail,
-            userPassword:hashedPassword,
+            userPassword,
             userContato,
             userMatriculaId,
-            tipo
-        })
+            userGraduacao,
+            userBarra
+        } = req.body;
 
-        sendMailConfirm(userEmail, user._id)
-        return res.status(200).send({message:'Usuario '+user.userName+' registrado com sucesso confirme o cadastro no  seu email'})   
-    }catch(err){
-        console.log(err)
-        return res.status(400).send({message:"Erro ao Registrar o usuário, verifique se os dados estão preenchidos corretamente !"})
+        // Normalizar email
+        userEmail = userEmail.toLowerCase().trim();
+
+        // Verifica se o usuário já existe
+        const existingUser = await User.findOne({ userEmail });
+        if (existingUser) {
+            return res.status(400).json({ message: "Já existe um usuário cadastrado com este e-mail!" });
+        }
+
+        // Criptografar a senha
+        const hashedPassword = await bcrypt.hash(userPassword, 10);
+
+        // Criar usuário no banco de dados
+        const newUser = await User.create({
+            userName,
+            userEmail,
+            userPassword: hashedPassword,
+            userContato,
+            userMatriculaId,
+            userGraduacao,
+            userBarra
+        });
+
+        // Enviar e-mail de confirmação
+        sendMailConfirm(userEmail, newUser._id);
+
+        return res.status(201).json({ 
+            message: `Usuário ${newUser.userName} registrado com sucesso! Confirme o cadastro no seu e-mail.` 
+        });
+
+    } catch (err) {
+        console.error("Erro ao registrar usuário:", err);
+        return res.status(500).json({ message: "Erro interno no servidor. Tente novamente mais tarde." });
     }
-
-}
+};
 
 exports.login = async(req,res)=>{
     const {userEmail, userPassword} = req.body

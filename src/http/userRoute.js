@@ -1,39 +1,73 @@
-const userController = require('../controllers/userController')
+const express = require('express');
+const userController = require('../controllers/userController');
+const { verificaToken } = require('../lib/jwtconfig');
 
-// verifica o token no headers da requisição 
-const {verificaToken} = require('../lib/jwtconfig')
+function userRoute(app) {
+    const router = express.Router();
 
-function userRoute(app){
+    // Rotas públicas
+    router.post('/', async (req, res) => {
+        try {
+            await userController.userCreate(req, res);
+        } catch (error) {
+            res.status(500).json({ message: 'Erro ao criar usuário', error: error.message });
+        }
+    });
 
-    app.get('/users',async (req, res)=>{
-        await userController.userList(req,res)
-    })
+    router.post('/recoverPassword/:userId', async (req, res) => {
+        try {
+            await userController.userUpdatePassword(req, res);
+        } catch (error) {
+            res.status(500).json({ message: 'Erro ao recuperar senha', error: error.message });
+        }
+    });
 
-    app.delete('/users/:id',verificaToken, async (req, res)=>{
-        await userController.userDelete(req, res)
-    })
+    router.get('/confirm/:id', async (req, res) => {
+        try {
+            await userController.userActive(req, res);
+        } catch (error) {
+            res.status(500).json({ message: 'Erro ao confirmar usuário', error: error.message });
+        }
+    });
 
-    app.post('/users/:id',async (req, res)=>{
-        await userController.userCreate(req, res)
-    })
+    // Middleware de autenticação para rotas protegidas
+    router.use(verificaToken);
 
-    app.put('/users/:id', verificaToken,async (req, res)=>{
-        await userController.userUpdate(req, res)
-    })
+    // Rotas protegidas
+    router.get('/', async (req, res) => {
+        try {
+            await userController.userList(req, res);
+        } catch (error) {
+            res.status(500).json({ message: 'Erro ao listar usuários', error: error.message });
+        }
+    });
 
-    app.get('/users/confirm/:id',async (req, res)=>{
-        await userController.userActive(req, res)
-    })
+    router.get('/:id', async (req, res) => {
+        try {
+            await userController.buscarUserByMatriculaId(req, res);
+        } catch (error) {
+            res.status(500).json({ message: 'Erro ao buscar usuário', error: error.message });
+        }
+    });
 
-    app.get('/user/:id',verificaToken, async (req, res)=>{
-        await userController.buscarUserByMatriculaId(req, res)
-    })
+    router.put('/:id', async (req, res) => {
+        try {
+            await userController.userUpdate(req, res);
+        } catch (error) {
+            res.status(500).json({ message: 'Erro ao atualizar usuário', error: error.message });
+        }
+    });
 
-    app.post('/recoverPassword/:userId',async (req, res)=>{
-        console.log('user route /users/recoverPassword ')
-        await userController.userUpdatePassword(req, res)
-    })
-    
+    router.delete('/:id', async (req, res) => {
+        try {
+            await userController.userDelete(req, res);
+        } catch (error) {
+            res.status(500).json({ message: 'Erro ao deletar usuário', error: error.message });
+        }
+    });
+
+    // Aplica as rotas no app
+    app.use('/users', router);
 }
 
-module.exports = userRoute
+module.exports = userRoute;

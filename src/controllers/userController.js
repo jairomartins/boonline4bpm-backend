@@ -42,7 +42,6 @@ exports.userDelete = async (req, res) =>{
 
 
 exports.userUpdate = async (req, res) =>{
-    console.log("user update controller >" + req.params.id)
     try{
         const result  = await user.updateOne(
             {userMatriculaId : req.params.id},
