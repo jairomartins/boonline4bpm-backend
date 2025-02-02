@@ -1,4 +1,4 @@
-const mongoose = require('../database/index')
+const mongoose = require('../database/db')
 
 const EnvolvidoSchema = new mongoose.Schema({
     tipo:String,
