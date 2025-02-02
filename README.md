@@ -12,9 +12,9 @@ A estrutura segue o padrão do NestJS:
 ```
 boonline4bpm-backend/
 ├── src/
-│   ├── controllers/      # Controladores que lidam com as requisições HTTP
+│   ├── controllers/      # Controladores que logica de negocio
 │   ├── models/           # Modelos de dados e esquemas
-│   ├── http/             # Definição das rotas da aplicação
+│   ├── http/             # Definição das rotas da aplicação, requisicoes http
 │   ├── database/         # Lógica de negócios e integração com o banco de dados
 │   ├── utils/            # Funções utilitárias e helpers
 |   ├── lib/              # Bibliotecas
