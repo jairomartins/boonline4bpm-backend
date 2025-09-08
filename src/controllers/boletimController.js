@@ -67,23 +67,55 @@ exports.removeBoletimByID = async( req, res)=>{
 }
 
 
-// Registra ou Atualiza no banco de dados um novo boletim de ocorrência
+// Registra ou Atualiza no banco de dados um boletim de ocorrência
+// se o _id for repassado via json, atualiza o boletim existente
+// se o _id não for repassado via json, cria um novo boletim
+// 
+// 
 //
-//
-//
-exports.createBoletim = async(req, res)=>{
-    try{
-        await Boletim.findOneAndUpdate(
-            {numero: req.body.boletim.numero, data : req.body.boletim.data},//critério de pesquisa. verifica se ja existe o boletim no banco de dados
-            {$set:req.body.boletim},
-            { upsert: true, new: true },
-        )
+exports.createBoletim = async (req, res) => {
+  try {
+    const boletimData = req.body.boletim;
 
-        res.status(200).send({message:"Boletim registrado com sucesso !"}) 
-    }catch(err){
-        return res.status(500).send({message:"Não foi possivel registrar o boletim, erro no servidor !", err:err})
+    if (boletimData._id) {
+      // Atualiza um boletim existente pelo _id
+      const boletimAtualizado = await Boletim.findByIdAndUpdate(
+        boletimData._id,
+        { $set: boletimData }, // atualiza todos os campos
+        { new: true }          // retorna o documento atualizado
+      );
+
+      if (!boletimAtualizado) {
+        // Caso o _id não exista, cria um novo boletim
+        const novoBoletim = await Boletim.create(boletimData);
+        return res.status(200).send({
+          message: "Boletim criado com sucesso!",
+          boletim: novoBoletim,
+        });
+      }
+
+      return res.status(200).send({
+        message: "Boletim atualizado com sucesso!",
+        boletim: boletimAtualizado,
+      });
+
+    } else {
+      // Cria um novo boletim
+      const novoBoletim = await Boletim.create(boletimData);
+      return res.status(200).send({
+        message: "Boletim criado com sucesso!",
+        boletim: novoBoletim,
+      });
     }
-}
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send({
+      message: "Não foi possível registrar o boletim, erro no servidor!",
+      err: err,
+    });
+  }
+};
+
 
 
 //Busca por Boletim que contem no efetivo ids igual do passado no params.id
