@@ -1,4 +1,4 @@
-const openai = require('../lib/openai');
+const openai = require('../lib/openAI');
 const responseHandler = require('../utils/responseHandler');
 
 const verifyText = async (req, res, next) => {
