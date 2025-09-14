@@ -26,7 +26,7 @@ const verificaToken = (req, res, next) => {
 };
 
 const gerarToken = (data)=>{
-    return jwt.sign({data},SECRET_PASSWORD_TOKEN,{expiresIn:60*1000})
+    return jwt.sign({data},SECRET_PASSWORD_TOKEN)
 }
 
 module.exports = {
