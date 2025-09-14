@@ -73,20 +73,21 @@ exports.removeBoletimByID = async( req, res)=>{
 // 
 // 
 //
+// controllers/boletimController.js
 exports.createBoletim = async (req, res) => {
   try {
     const boletimData = req.body.boletim;
 
+    // Se houver _id, atualiza o boletim existente
     if (boletimData._id) {
-      // Atualiza um boletim existente pelo _id
       const boletimAtualizado = await Boletim.findByIdAndUpdate(
         boletimData._id,
-        { $set: boletimData }, // atualiza todos os campos
-        { new: true }          // retorna o documento atualizado
+        { $set: boletimData }, 
+        { new: true } // retorna o documento atualizado
       );
 
       if (!boletimAtualizado) {
-        // Caso o _id não exista, cria um novo boletim
+        // Caso o _id seja inválido, cria um novo boletim
         const novoBoletim = await Boletim.create(boletimData);
         return res.status(200).send({
           message: "Boletim criado com sucesso!",
@@ -98,9 +99,9 @@ exports.createBoletim = async (req, res) => {
         message: "Boletim atualizado com sucesso!",
         boletim: boletimAtualizado,
       });
-
-    } else {
-      // Cria um novo boletim
+    } 
+    // Se não houver _id, cria um boletim novo
+    else {
       const novoBoletim = await Boletim.create(boletimData);
       return res.status(200).send({
         message: "Boletim criado com sucesso!",
@@ -115,6 +116,7 @@ exports.createBoletim = async (req, res) => {
     });
   }
 };
+
 
 
 
