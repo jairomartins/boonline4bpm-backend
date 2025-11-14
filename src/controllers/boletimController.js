@@ -8,15 +8,17 @@ const Boletim = require('../model/boletim')
 
 // retorna uma lista com todos os boletins de ocorrências no banco de dados
 
-exports.BoletimList = async (req, res)=>{
-    try{
-        const result = await Boletim.find()
-        return res.status(200).send(JSON.stringify(result))
-    }catch(err){
-        return res.status(500).send({message:"Erro não foi possivel buscar a lista de boletins", error:err})
-    }
-    
-}
+exports.BoletimList = async (req, res) => {
+  try {
+    const result = await Boletim.find().sort({ _id: -1 }); 
+    return res.status(200).send(JSON.stringify(result));
+  } catch (err) {
+    return res.status(500).send({
+      message: "Erro ao buscar lista de boletins",
+      error: err
+    });
+  }
+};
 
 //buscar boletim no banco de dados de acordo com id repassado via get 
 //
@@ -59,7 +61,7 @@ exports.boletimByNumeroAndCidade = async (req, res)=>{
 //
 exports.removeBoletimByID = async( req, res)=>{
     try {
-        const result = await Boletim.remove({_id: req.params.IDBoletim})
+        const result = await Boletim.deleteOne({ _id: req.params.id });
         return res.status(200).send(JSON.stringify(result))
     } catch (err) {
         return res.status(500).send({message:"Boletim não encontrado", error:err})     
