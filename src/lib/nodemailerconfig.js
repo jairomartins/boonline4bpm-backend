@@ -45,7 +45,7 @@ async function sendMail(to, subject, htmlContent) {
  * Envia e-mail de confirmação de cadastro.
  */
 exports.sendMailConfirm = async (destinatario, id) => {
-    const confirmUrl = `${getProtocolo()}://${process.env.BASE_URL}:${process.env.PORT}/users/confirm/${id}`;
+    const confirmUrl = `${getProtocolo()}://jmartins.vps-kinghost.net:${process.env.PORT}/users/confirm/${id}`;
     
     const htmlContent = `
         <p>Parabéns por entrar no Boletim Online! Para ativar seu cadastro, clique no link abaixo:</p>
@@ -64,7 +64,7 @@ exports.sendMailRecoverPassword = async (user) => {
         throw new Error("Usuário inválido ou dados insuficientes para recuperação de senha.");
     }
 
-    const recoverUrl = `${getProtocolo()}://${process.env.BASE_URL}:${process.env.PORT}/passwordrecover/${user.id}`;
+    const recoverUrl = `${getProtocolo()}://jmartins.vps-kinghost.net:${process.env.PORT}/passwordrecover/${user.id}`;
 
     const htmlContent = `
         <p>Você solicitou a recuperação de senha do Boletim Online 4BPM:</p>
