@@ -97,7 +97,7 @@ exports.recoverPassword = async(req,res)=>{
 exports.passwordFormUpdate = async(req,res)=>{
 
     const form = `
-    <form method="post" action=/recoverPassword/${req.params.userId}/>
+    <form method="post" action=/users/recoverPassword/${req.params.userId}/>
       <label for="password">Digite a nova senha :</label>
       <input type="password" id="password" name="userPassword">
       <button type="submit">Confirmar alteração de senha</button>
