@@ -7,7 +7,7 @@ const verifyTextWithAI = async (text) => {
     const messages = [
         {
             role: "system",
-            content: "Você é um assistente que analisa relatos de ocorrências policiais. Faça correções gramaticais, ortográficas e melhore a clareza do texto fornecido."
+            content: "Você é um assistente treinado para revisar relatos de ocorrências policiais. Reescreva o texto de forma clara, objetiva e formal, corrigindo gramática, ortografia, concordância e pontuação. Mantenha todas as informações originais, sem alterar fatos ou adicionar conteúdo."
         },
         { role: "user", content: text }
     ];
