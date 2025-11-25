@@ -246,14 +246,25 @@ exports.naturezaRankingByMonth = async (req, res)=>{
     }
 }
 
-exports.boletimListByDay = async( req, res)=>{
+exports.boletimListByDay = async (req, res) => {
     try {
-        const result = await Boletim.find({data: `${req.params.dia}/${req.params.mes}/${req.params.ano}`})
-        return res.status(200).send(JSON.stringify(result))
+        const { dia, mes, ano } = req.params;
+        const data = `${dia}/${mes}/${ano}`;
+
+        const result = await Boletim.find({ data })
+            .sort({ municipio: 1, numero: 1 }); 
+            // cidade A→Z e numero DESC
+
+        return res.status(200).json(result);
+
     } catch (err) {
-        return res.status(500).send({message:"Boletim não encontrado", error:err})     
-    } 
-}
+        return res.status(500).send({
+            message: "Boletim não encontrado",
+            error: err
+        });
+    }
+};
+
 
 exports.uploadPhotos = async(req , res)=>{
 
