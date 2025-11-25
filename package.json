@@ -1,6 +1,6 @@
 {
   "name": "boonline4bpm-backend",
-  "version": "4.1.2",
+  "version": "20.11.25",
   "description": "boonline4bpm-backend é um backend desenvolvido em Node.js, projetado para gerenciar as operações do sistema boonline4bpm. Ele fornece uma API robusta para manipulação de dados e autenticação segura.",
   "main": "index.js",
   "scripts": {
