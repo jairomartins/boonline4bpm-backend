@@ -7,12 +7,13 @@ const {verificaToken} = require('../lib/jwtconfig')
 
 function route (app){
  
+    //the route to list all incident reports
     app.get('/adm/boletim/list',async (req ,res )=>{
-        await boletimController.BoletimList( req, res)
+        await boletimController.incidentReportList( req, res)
     })
 
     app.get('/adm/boletim/listByID/:IDBoletim', verificaToken,async(req, res) => {
-        await boletimController.boletimByID(req, res)
+        await boletimController.incidentReportByID(req, res)
     })
 
     app.get('/adm/boletim/list/:numero/:municipio', verificaToken,  async(req, res) => {
@@ -44,7 +45,7 @@ function route (app){
     })
 
     // lista boletins de um usuario pelo id do policial empregado no efetivo
-    app.get('/adm/boletim/list/:id',verificaToken ,async (req,res)=>{
+    app.get('/adm/boletim/list/:id',async (req,res)=>{
         await boletimController.listaMeusBos(req, res)
     })
     

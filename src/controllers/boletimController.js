@@ -1,35 +1,32 @@
-//controller do boletim
+//Controller of Incident Reports
 
 const multer = require('multer')
 const path  = require('fs')
 
 const { json } = require('body-parser')
-const Boletim = require('../model/boletim')
+const IncidentReport = require('../model/boletim')
 
-// retorna uma lista com todos os boletins de ocorrências no banco de dados
-
-exports.BoletimList = async (req, res) => {
+// Return a list of Incident Reports sorted by most recent
+exports.incidentReportList = async (req, res) => {
   try {
-    const result = await Boletim.find().sort({ _id: -1 }); 
-    return res.status(200).send(JSON.stringify(result));
+    const incidentReports = await IncidentReport.find().sort({ _id: -1 }); 
+    return res.status(200).send(JSON.stringify(incidentReports));
   } catch (err) {
     return res.status(500).send({
-      message: "Erro ao buscar lista de boletins",
+      message: "We got a problem to fetch Incident Reports from database",
       error: err
     });
   }
 };
 
-//buscar boletim no banco de dados de acordo com id repassado via get 
-//
-//
-//
-exports.boletimByID = async (req, res)=>{
+
+//Search Incident Report by ID  
+exports.incidentReportByID = async (req, res)=>{
     try{
-        const result = await Boletim.find({_id: req.params.IDBoletim})
-        return res.status(200).send(JSON.stringify(result))
+        const incidentReport = await IncidentReport.find({_id: req.params.IDBoletim})
+        return res.status(200).send(JSON.stringify(incidentReport))
     }catch(err){
-        return res.status(500).send({message:"Boletim não encontrado", error:err}) 
+        return res.status(500).send({message:"Incident Report not found", error:err}) 
     }
 }
 

@@ -1,3 +1,7 @@
+// Arquivo: boonline4bpm-backend/src/index.js
+// Descrição: Ponto de entrada do aplicativo Express com suporte para HTTP e HTTPS
+// Autor: Jairo Martins
+
 require('dotenv').config();
 const express = require('express');
 const https = require('https');
@@ -8,6 +12,8 @@ const cors = require('cors');
 
 const app = express();
 
+// Middleware 
+// Configuração do CORS e body-parser (análise do corpo da requisição e suporte a JSON)
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -26,10 +32,11 @@ if (process.env.USE_HTTPS === 'true') {
   const certificate = fs.readFileSync('/etc/letsencrypt/live/jmartins.vps-kinghost.net/cert.pem', 'utf8');
   const ca = fs.readFileSync('/etc/letsencrypt/live/jmartins.vps-kinghost.net/chain.pem', 'utf8');
 
+  // Configuração das credenciais SSL (chave privada, certificado e CA)
   const credentials = {
-    key: privateKey,
-    cert: certificate,
-    ca: ca
+    key: privateKey, // Chave privada
+    cert: certificate, // Certificado
+    ca: ca // Autoridade certificadora
   };
 
   const httpsServer = https.createServer(credentials, app);
