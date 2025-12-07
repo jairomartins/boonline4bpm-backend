@@ -62,7 +62,7 @@ function userRoute(app) {
     });
 
     // Aplica as rotas no app
-    app.use('/users', router);
+    app.use('/user', router);
 }
 
 module.exports = userRoute;
