@@ -93,8 +93,8 @@ exports.incidentReportByCityAndNumber = async (req, res)=>{
 // Return a list of Incident Reports by date
 exports.incidentReportListByDate = async (req, res) => {
     try {
-        const { dia, mes, ano } = req.params;
-        const dateToSearch = `${dia}/${mes}/${ano}`;
+        const { day, month, year } = req.params;
+        const dateToSearch = `${day}/${month}/${year}`;
 
         const incidentReportList = await IncidentReport.find({ data: dateToSearch }).sort({ municipio: 1, numero: 1 }); 
         return res.status(200).json(incidentReportList);

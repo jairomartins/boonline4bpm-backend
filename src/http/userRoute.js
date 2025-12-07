@@ -49,34 +49,6 @@ function userRoute(app) {
     });
 
 
-
-    //TODO - Refactory this routes under this comment ----
-    router.post('/recoverPassword/:userId', async (req, res) => {
-        try {
-            await userController.userUpdatePassword(req, res);
-        } catch (error) {
-            res.status(500).json({ message: 'Error updating password', error: error.message });
-        }
-    });
-
-    router.get('/confirm/:id', async (req, res) => {
-        try {
-            await userController.userActive(req, res);
-        } catch (error) {
-            res.status(500).json({ message: 'Error confirming user', error: error.message });
-        }
-    });
-
-    // Middleware de autenticação para rotas protegidas
-    //router.use(verificaToken);
-
-
-  
-
-
-
-    
-
     // Aplica as rotas no app
     app.use('/user', router);
 }

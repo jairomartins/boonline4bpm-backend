@@ -35,7 +35,7 @@ function incidentReportRoute (app){
     })
 
     //route to list incident reports by date
-    router.get('/:dia/:mes/:ano', async (req,res)=>{
+    router.get('/:day/:month/:year', async (req,res)=>{
         await incidentReportController.incidentReportListByDate(req, res)
     })
 
