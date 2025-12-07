@@ -14,13 +14,13 @@ const app = express();
 
 // Middleware 
 // Configuração do CORS e body-parser (análise do corpo da requisição e suporte a JSON)
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cors()); // Habilita CORS for all routes
+app.use(bodyParser.json()); // Suporte to JSON bodies
+app.use(bodyParser.urlencoded({ extended: false })); // Suporte to URL-encoded bodies
 
-// Rotas do seu aplicativo
+// Routes
 require('./http/route')(app);
-require('./http/boletimRoute')(app);
+require('./http/incidentReportRoute')(app);
 require('./http/userRoute')(app);
 require('./http/authRouter')(app);
 require('./http/verifyTextRoute')(app);

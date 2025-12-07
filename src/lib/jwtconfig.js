@@ -6,16 +6,16 @@ const verificaToken = (req, res, next) => {
     const token = req.headers[TOKEN_HEADER];
 
     if (!token) {
-        return res.status(401).json({ message: "Token não fornecido", auth: false });
+        return res.status(401).json({ message: "Missing token", auth: false });
     }
 
     jwt.verify(token, SECRET_PASSWORD_TOKEN, (err, decoded) => {
         if (err) {
-            console.log("Erro ao autenticar token:", err);
-            return res.status(401).json({ message: "Token inválido ou expirado", auth: false });
+            console.log("Error authenticating token:", err);
+            return res.status(401).json({ message: "Invalid or expired token", auth: false });
         }
 
-        // Se chegou aqui, o token é válido
+        // If we reach here, the token is valid
         req.user = decoded;
         next();
     });

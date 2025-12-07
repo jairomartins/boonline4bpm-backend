@@ -1,7 +1,7 @@
 function route (app){
     app.get('/',(req,res)=>{
-        console.log("[Servidor : ON]")
-        res.send('[Servidor : ON version 20/11/2025]') 
+        console.log("[Server : ON]")
+        res.send('[Server : ON  (version 04/12/2025)]') 
     })
 }
 module.exports = route

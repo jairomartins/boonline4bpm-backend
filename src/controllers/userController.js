@@ -5,85 +5,77 @@ const user = require('../model/user')
 const bcrypt = require('bcryptjs')
 const {sendMailUpdatePassword} =require('../lib/nodemailerconfig')
 
-exports.userList = async (req, res)=>{
-    const result = await user.find()
-    res.send(JSON.stringify(result))
+//list all users on db
+exports.usersList = async (req, res)=>{
+    try{
+        const usersList = await user.find()
+        res.send(JSON.stringify(usersList))
+    }catch(err){
+        res.status(500).send({message: "Server error"})
+    }
 }
 
+//create user on db
 exports.userCreate = async (req, res) =>{
     try{
         return user.create(req.body, function (err,user){
             if(err){
-                return res.status(400).send({message: "Não foi possivel registrar o usuario ..."})
+                return res.status(400).send({message: "Could not create user", err: err})
             }else{
-                return res.status(200).send({message: "Usuario criado com sucesso verifique seu email para ativação da conta"})
+                return res.status(200).send({message: "User created successfully, please check your email to activate your account!"})
             }
         })  
     }catch(err){
-        return res.status(500).send({message: "Erro no servidor"})
+        return res.status(500).send({message: "Server error"})
     }
     
 }
 
+//delete user on db
 exports.userDelete = async (req, res) =>{
     try{
         const result = await user.deleteOne(
             {userMatriculaId : req.body.userMatriculaId},  
         )
         if (result.deletedCount ===1){
-            return res.status(200).send({message:"Usuario excluido com sucesso"})
+            return res.status(200).send({message:"User deleted successfully!"})
         }else{
-            return res.status(404).send({message: "Usuario não encontrado"})
+            return res.status(404).send({message: "User not found"})
         }
     }catch(err){
-        return res.status(500).send({message: "Erro no servidor"})
+        return res.status(500).send({message: "Server error"})
     }
 }
 
-
+//update user on db
 exports.userUpdate = async (req, res) =>{
     try{
         const result  = await user.updateOne(
             {userMatriculaId : req.params.id},
             { $set :req.body},
         )
-        return res.status(200).send({message: "Dados Atualizados com Sucesso !"})
+        return res.status(200).send({message: "Data updated successfully!"})
     }catch(err){
-        return res.status(500).send({message: "Erro no servidor"})//, err})  
+        return res.status(500).send({message: "Server error"})//, err})  
     }
     
 }
 
- 
-
-exports.userActive = async (req, res) =>{
-    console.log(req.params)
-    try{
-        const result  = await user.updateOne(
-            {_id: req.params.id},
-            { $set :{isAtivo:true}},
-        )
-
-        return res.status(200).send({message: "Usuario ativado com sucesso, faça login!"})
-    }catch(err){
-        return res.status(500).send({message: "Erro no servidor"})
-    }
-    
-}
-
-function verificarUsuario (email){
+//check if user exists by email
+function verifyUser (email){
     return user.find({userEmail:email})
 }
 
-exports.buscarUserByMatriculaId = async (req, res)=>{
+//find user by matricula id
+exports.findUserByMatriculaId = async (req, res)=>{
     res.send(JSON.stringify( await user.find({userMatriculaId:req.params.id})))
 }
 
 
-
+//send email to update password
 exports.userUpdatePasswordSendEmail = async (req, res) =>{
     const {email}  = req.params
-    const usuario = verificarUsuario(email)
+    const usuario = verifyUser(email)
 
     if(usuario!=null){
         try {
