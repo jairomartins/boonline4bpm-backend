@@ -48,7 +48,13 @@ function userRoute(app) {
         await userController.usersList(req, res);
     });
 
-
+    router.post('/recoverPassword/:userId', async (req, res) => {
+        try {
+            await userController.userUpdatePassword(req, res);
+        } catch (error) {
+            res.status(500).json({ message: 'Error recovering password', error: error.message });
+        }
+    });
     // Aplica as rotas no app
     app.use('/user', router);
 }
