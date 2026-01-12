@@ -33,10 +33,10 @@ exports.userCreate = async (req, res) =>{
 
 //delete user on db
 exports.userDelete = async (req, res) =>{
-    console.log(req.body._id)
+    const {id} = req.params
     try{
         const result = await user.deleteOne(
-            {_id : req.body._id},  
+            {_id : id},  
         )
         if (result.deletedCount ===1){
             return res.status(200).send({message:"User deleted successfully!"})
