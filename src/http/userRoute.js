@@ -6,7 +6,7 @@ function userRoute(app) {
     const router = express.Router();
 
     //create user route
-    router.post('/', async (req, res) => {
+    router.post('/',verificaToken, async (req, res) => {
         try {
             await userController.userCreate(req, res);
         } catch (error) {
@@ -16,7 +16,7 @@ function userRoute(app) {
 
     //delete user route
     //to delete a user, we need to pass the user ID
-    router.delete('/', async (req, res) => {
+    router.delete('/',verificaToken, async (req, res) => {
         try {
             await userController.userDelete(req, res);
         } catch (error) {
@@ -25,7 +25,7 @@ function userRoute(app) {
     });
 
     //route to get user by matricula ID  
-    router.get('/:id', async (req, res) => {
+    router.get('/:id',verificaToken, async (req, res) => {
         try {
             await userController.findUserByMatriculaId(req, res);
         } catch (error) {
@@ -35,7 +35,7 @@ function userRoute(app) {
 
     //update user route
     //to update a user, we need to pass the user ID
-    router.put('/:id', async (req, res) => {
+    router.put('/:id',verificaToken, async (req, res) => {
         try {
             await userController.userUpdate(req, res);
         } catch (error) {
@@ -44,11 +44,11 @@ function userRoute(app) {
     });
 
     //route to get all users
-    router.get('/', async (req, res) => {
+    router.get('/',verificaToken, async (req, res) => {
         await userController.usersList(req, res);
     });
 
-    router.post('/recoverPassword/:userId', async (req, res) => {
+    router.post('/recoverPassword/:userId', verificaToken, async (req, res) => {
         try {
             await userController.userUpdatePassword(req, res);
         } catch (error) {
