@@ -60,6 +60,35 @@ exports.incidentReports = async (req, res) => {
   }
 };
 
+exports.incidentReportsByViolenceDomestic = async (req, res) => {
+  try {
+    const ocorrencias = await IncidentReport.find(
+      {
+        natureza: { $regex: "viol[eê]ncia dom[eé]stica", $options: "i" }
+      },
+      {
+        _id: 0,
+        numero: 1,
+        data: 1,
+        natureza: 1,
+        municipio: 1,
+        bairro: 1
+      }
+    ).sort({ data: 1 });
+
+    return res.status(200).json({
+      total: ocorrencias.length,
+      dados: ocorrencias
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Erro ao buscar boletins de violência doméstica"
+    });
+  }
+};
+
 //Search Incident Report by ID on database  
 exports.incidentReportByID = async (req, res)=>{
     try{

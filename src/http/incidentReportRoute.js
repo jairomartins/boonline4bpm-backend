@@ -9,6 +9,18 @@ const {verificaToken} = require('../lib/jwtconfig')
 function incidentReportRoute (app){
     const router = express.Router()
 
+    // route to get all incident reports with domestic violence nature
+    router.get('/domestic', async (req, res) => {
+    console.log("Received request for domestic violence incident reports");
+
+    try {
+        await incidentReportController.incidentReportsByViolenceDomestic(req, res);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Erro ao buscar ocorrências de violência doméstica" });
+    }
+    });
+
     // create incident report route
     router.post('/create', async (req, res)=>{
         await incidentReportController.createOrUpdateIncidentReport(req, res)
@@ -43,6 +55,8 @@ function incidentReportRoute (app){
     router.get('/:number', async (req, res)=>{
         await incidentReportController.incidentReportByNumber(req,res)
     })
+
+   
 
     app.use('/incidentReport', router)
 }
