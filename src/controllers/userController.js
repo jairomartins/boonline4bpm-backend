@@ -51,8 +51,10 @@ exports.userDelete = async (req, res) =>{
 //update user on db
 exports.userUpdate = async (req, res) =>{
     try{
+        console.log('usercontroller userUpdate')
+        console.log('atualizando user: '+ req.params.id)
         const result  = await user.updateOne(
-            {userMatriculaId : req.params.id},
+            {_id : req.params.id},
             { $set :req.body},
         )
         return res.status(200).send({message: "Data updated successfully!"})
