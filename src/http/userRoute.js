@@ -16,7 +16,7 @@ function userRoute(app) {
 
     //delete user route
     //to delete a user, we need to pass the user ID
-    router.delete('/:id', async (req, res) => {
+    router.delete('/', async (req, res) => {
         try {
             await userController.userDelete(req, res);
         } catch (error) {

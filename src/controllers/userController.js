@@ -33,9 +33,10 @@ exports.userCreate = async (req, res) =>{
 
 //delete user on db
 exports.userDelete = async (req, res) =>{
+    console.log(req.body._id)
     try{
         const result = await user.deleteOne(
-            {userMatriculaId : req.body.userMatriculaId},  
+            {_id : req.body._id},  
         )
         if (result.deletedCount ===1){
             return res.status(200).send({message:"User deleted successfully!"})
