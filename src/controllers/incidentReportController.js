@@ -65,16 +65,8 @@ exports.incidentReportsByViolenceDomestic = async (req, res) => {
     const ocorrencias = await IncidentReport.find(
       {
         natureza: { $regex: "viol[eê]ncia dom[eé]stica", $options: "i" }
-      },
-      {
-        _id: 0,
-        numero: 1,
-        data: 1,
-        natureza: 1,
-        municipio: 1,
-        bairro: 1
       }
-    ).sort({ data: 1 });
+    ).sort({ _id: -1 });
 
     return res.status(200).json({
       total: ocorrencias.length,
