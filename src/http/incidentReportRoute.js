@@ -11,8 +11,6 @@ function incidentReportRoute (app){
 
     // route to get all incident reports with domestic violence nature
     router.get('/domestic', async (req, res) => {
-    console.log("Received request for domestic violence incident reports");
-
     try {
         await incidentReportController.incidentReportsByViolenceDomestic(req, res);
     } catch (error) {

@@ -70,7 +70,7 @@ exports.incidentReportsByViolenceDomestic = async (req, res) => {
 
     return res.status(200).json({
       total: ocorrencias.length,
-      dados: ocorrencias
+      incidentesReports: ocorrencias
     });
 
   } catch (error) {
