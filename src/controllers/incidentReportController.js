@@ -69,7 +69,6 @@ exports.incidentReportsByViolenceDomestic = async (req, res) => {
     ).sort({ _id: -1 });
 
     return res.status(200).json({
-      total: ocorrencias.length,
       incidentesReports: ocorrencias
     });
 
