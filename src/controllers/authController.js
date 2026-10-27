@@ -58,6 +58,8 @@ exports.register = async (req, res) => {
             userMatriculaId,
             userGraduacao,
             userBarra,
+            roleKey: 'basico',
+            tipo: 'comum',
             isAtivo: true
         });
 

@@ -9,7 +9,7 @@ const bcrypt = require('bcryptjs')
 
 process.env.SECRET_PASSWORD_TOKEN = 'test-secret-for-api-flows'
 
-const userState = { user: null }
+const userState = { user: null, created: null }
 const reportState = {
     existing: null,
     created: null,
@@ -52,7 +52,10 @@ const User = {
             then(resolve, reject) { return Promise.resolve(foundUser).then(resolve, reject) }
         }
     },
-    create: async user => user,
+    create: async user => {
+        userState.created = { _id: 'new-user-record', ...user }
+        return userState.created
+    },
     updateOne: async () => ({ acknowledged: true })
 }
 
@@ -333,6 +336,27 @@ test('login exige confirmação do e-mail antes de autenticar', async () => {
     })
     assert.equal(response.status, 403)
     assert.equal(response.body.authenticated, false)
+})
+
+test('registra novas contas com role básica e tipo legado comum, ignorando roles do cliente', async () => {
+    userState.user = null
+    userState.created = null
+
+    const response = await request('/auth/register', {
+        method: 'POST',
+        body: {
+            userName: 'Novo usuário',
+            userEmail: 'novo@example.test',
+            userPassword: 'senha-segura',
+            roleKey: 'administrador',
+            tipo: 'admin'
+        }
+    })
+
+    assert.equal(response.status, 201)
+    assert.equal(userState.created.roleKey, 'basico')
+    assert.equal(userState.created.tipo, 'comum')
+    assert.equal(userState.created.isAtivo, true)
 })
 
 test('cria boletim vinculado ao usuário autenticado e atualiza os dados do próprio boletim', async () => {
