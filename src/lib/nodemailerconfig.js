@@ -44,8 +44,13 @@ async function sendMail(to, subject, htmlContent) {
 /**
  * Envia e-mail de confirmação de cadastro.
  */
-exports.sendMailConfirm = async (destinatario, id) => {
-    const confirmUrl = `${getProtocolo()}://jmartins.vps-kinghost.net:${process.env.PORT}/users/confirm/${id}`;
+exports.sendMailConfirm = async (destinatario, token) => {
+    if (!destinatario || !token) {
+        throw new Error("Destinatário ou token de confirmação não informado.");
+    }
+    const baseUrl = process.env.BASE_URL || 'localhost';
+    const port = process.env.PORT || 3000;
+    const confirmUrl = `${getProtocolo()}://${baseUrl}:${port}/auth/confirm/${encodeURIComponent(token)}`;
     
     const htmlContent = `
         <p>Parabéns por entrar no Boletim Online! Para ativar seu cadastro, clique no link abaixo:</p>
@@ -59,12 +64,14 @@ exports.sendMailConfirm = async (destinatario, id) => {
 /**
  * Envia e-mail para recuperação de senha.
  */
-exports.sendMailRecoverPassword = async (user) => {
-    if (!user || !user.userEmail || !user.id) {
+exports.sendMailRecoverPassword = async (user, token) => {
+    if (!user || !user.userEmail || !user.id || !token) {
         throw new Error("Usuário inválido ou dados insuficientes para recuperação de senha.");
     }
 
-    const recoverUrl = `${getProtocolo()}://jmartins.vps-kinghost.net:${process.env.PORT}/passwordrecover/${user.id}`;
+    const baseUrl = process.env.BASE_URL || 'localhost';
+    const port = process.env.PORT || 3000;
+    const recoverUrl = `${getProtocolo()}://${baseUrl}:${port}/auth/passwordrecover/${encodeURIComponent(token)}`;
 
     const htmlContent = `
         <p>Você solicitou a recuperação de senha do Boletim Online 4BPM:</p>

@@ -1,7 +1,7 @@
 
 ## 📌 boonline4bpm-backend  
 
-**boonline4bpm-backend** é um backend desenvolvido em  **Node.js**, projetado para gerenciar as operações do sistema **boonline4bpm**. Ele fornece uma API robusta para manipulação de dados e autenticação segura.
+**boonline4bpm-backend** é uma API em Node.js/Express para o sistema **boonline4bpm**, com persistência em MongoDB.
 
 ---
 
@@ -13,15 +13,15 @@
 
 ## 📂 Estrutura do Projeto  
 
-A estrutura segue o padrão do NestJS:  
+A estrutura principal do projeto:
 
 ```
 boonline4bpm-backend/
 ├── src/
 │   ├── controllers/      # Controladores que logica de negocio
-│   ├── models/           # Modelos de dados e esquemas
+│   ├── model/            # Modelos Mongoose
 │   ├── http/             # Definição das rotas da aplicação, requisicoes http
-│   ├── database/         # Lógica de negócios e integração com o banco de dados
+│   ├── database/         # Conexão com o banco de dados
 │   ├── utils/            # Funções utilitárias e helpers
 |   ├── lib/              # Bibliotecas
 │   └── index.js          # Ponto de entrada da aplicação
@@ -53,78 +53,104 @@ boonline4bpm-backend/
    npm install
    ```
 
-3. **Configure as variáveis de ambiente:**  
+3. **Configure as variáveis de ambiente (opcional conforme o recurso usado):**
 
-   Crie um arquivo `.env` na raiz do projeto e adicione:  
+   Crie um arquivo `.env` na raiz do projeto:
 
    ```env
-   DATABASE_HOST=seu_host
-   DATABASE_PORT=sua_porta
-   DATABASE_USER=seu_usuario
-   DATABASE_PASSWORD=sua_senha
-   DATABASE_NAME=seu_banco
-   JWT_SECRET=sua_chave_secreta
+   PORT=3000
+   BASE_URL=localhost
+   SECRET_PASSWORD_TOKEN=uma_chave_longa_e_aleatoria
+   PUBLIC_VALIDATION_BASE_URL=https://bo.seudominio.gov.br
+   EMAIL_USER=seu_email
+   EMAIL_PASSWORD=sua_senha_de_app
+   OPENAI_API_KEY=sua_chave_da_openai
    ```
 
-4. **Inicie o servidor:**  
+   O MongoDB deve estar disponível em `mongodb://127.0.0.1:27017/boonline` (configuração atual em `src/database/db.js`). Em desenvolvimento, a URL de validação usa `http://localhost:3000` por padrão; opcionalmente, configure `PUBLIC_VALIDATION_BASE_URL`. Em produção, configure essa variável com a origem HTTPS pública do frontend; localhost e endereços IP são recusados. E-mail e OpenAI são necessários apenas para os recursos correspondentes.
+
+4. **Inicie o servidor:**
    ```bash
-   npm run start:dev
+   npm run dev
    ```
 
-O backend estará disponível em `http://localhost:3000`.
+Para iniciar sem reinicialização automática, use `npm start`. A API fica disponível em `http://localhost:3000`.
+A documentação HTML da API fica disponível em `http://localhost:3000/docs`.
 
 ---
 
 ## 📡 Rotas da API  
 
-A API possui os seguintes endpoints:
+As rotas de autenticação também aceitam os caminhos legados sem o prefixo `/auth`.
 
 ### 🔐 **Autenticação**  
-| Método  | Rota              | Descrição |
-|---------|------------------|-----------|
-| `POST`  | `/auth/login`    | Autentica um usuário e retorna um token JWT |
-| `POST`  | `/auth/register` | Registra um novo usuário no sistema |
-| `POST`  | `/auth/logout`   | Invalida o token do usuário (se aplicável) |
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/auth/login` | Autentica e retorna um token JWT |
+| `POST` | `/auth/register` | Registra um usuário |
+| `GET` | `/auth/confirm/:token` | Confirma o e-mail usando o link enviado no cadastro |
+| `POST` | `/auth/recuperarSenha` | Solicita link de recuperação por e-mail |
+| `GET` | `/auth/passwordrecover/:token` | Exibe formulário para redefinir senha |
+| `POST` | `/auth/passwordrecover/:token` | Redefine senha com token temporário de uso único |
+| `GET` | `/auth/isUserAuth` | Valida o token enviado no cabeçalho `x-access-token` |
 
----
+Não há endpoint de logout: os tokens são JWT stateless; o cliente deve descartar o token.
 
 ### 👥 **Usuários**  
-| Método  | Rota            | Descrição |
-|---------|----------------|-----------|
-| `GET`   | `/user`       | Lista todos os usuários cadastrados |
-| `GET`   | `/user/:id`   | Obtém os detalhes de um usuário específico |
-| `PUT`   | `/user/:id`   | Atualiza os dados de um usuário |
-| `DELETE`| `/user/:id`   | Remove um usuário do sistema |
+Todas as rotas de usuários exigem o cabeçalho `x-access-token`.
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/user` | Cadastra usuário |
+| `GET` | `/user` | Lista usuários |
+| `GET` | `/user/:matricula` | Busca usuário pela matrícula |
+| `PUT` | `/user/:id` | Atualiza dados permitidos pelo ID MongoDB |
+| `DELETE` | `/user/:id` | Remove pelo ID MongoDB |
 
 ---
+
+### Roles e permissões
+
+As permissões efetivas vêm da role ativa armazenada no MongoDB e são revalidadas no backend em cada requisição. Os endpoints administrativos são `GET/POST /access/roles`, `PUT /access/roles/:id`, `PATCH /access/users/:id/role`, `PATCH /access/users/:id/status` e `GET /access/me`; cada endpoint exige sua permissão específica. O catálogo de permissões e os recursos estão em `src/utils/permissionCatalog.js`.
+
+Para criar as roles iniciais e mapear perfis legados, revise a conexão MongoDB e execute `npm run migrate:roles`. A migração é idempotente e não remove o campo legado `tipo`: contas com `tipo=admin` são associadas a `Administrador`; os demais perfis, inclusive `COPOM` e `P3`, são associados a `Básico`. As roles COPOM, P3 e Comandante começam sem permissões sensíveis e devem ser configuradas conforme aprovação institucional. O script exige ao menos uma conta administrativa ativa e não foi executado como parte desta alteração.
+
 ### 📂 **Boletim de Ocorrência (BO)**
 
-| Método  | Rota                            | Descrição                                                                 |
-|---------|---------------------------------|---------------------------------------------------------------------------|
-| `GET`   | `/incidentReport`             | Lista todos os boletins de ocorrência registrados.                        |
-| `GET`   | `/incidentReport/:ID` | Obtém detalhes de um boletim de ocorrência específico pelo ID.            |
-| `GET`   | `/incidentReport/:city/:number` | Obtém boletins de ocorrência filtrados municipio e numero.             |
-| `GET`   | `/incidentReport/:day/:month/:year` | Busca boletins de ocorrência de acordo com uma data específica.  |
-| `POST`  | `/incidentReport/create`           | Cria um novo boletim de ocorrência.                                        |
-| `GET`   | `/incidentReport/:number`   | Busca boletim de ocorrência pelo número fornecido.                        |
-| `DELETE`  | `/incidentReport/remove/:id`       | Exclui um boletim de ocorrência pelo ID.                                   |
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/incidentReport` | Lista boletins |
+| `GET` | `/incidentReport/domestic` | Busca boletins de violência doméstica |
+| `GET` | `/incidentReport/date/:day/:month/:year` | Busca por data |
+| `GET` | `/incidentReport/city/:city/:number` | Busca por município e número |
+| `GET` | `/incidentReport/number/:number` | Busca por número |
+| `GET` | `/incidentReport/:incidentReportId` | Busca pelo ID MongoDB |
+| `POST` | `/incidentReport/create` | Cria ou atualiza; exige token |
+| `DELETE` | `/incidentReport/remove/:id` | Exclui; exige token |
+
+Os formatos antigos de busca por data e por município/número continuam disponíveis por compatibilidade.
+
+### Cópias digitais e validação por QR Code
+
+| Método | Rota | Acesso |
+|---|---|---|
+| `POST` | `/incidentReport/:id/documents` | Usuário autenticado autorizado; emite o PDF final com o mesmo conteúdo da impressão do sistema e QR Code ao final |
+| `GET` | `/incidentReport/documents/validation/:token` | Público, limitado a 30 consultas por minuto por IP; retorna apenas estado, versão e emissão |
+| `GET` | `/incidentReport/documents/validation/:token/details` | Autenticado; autor ou administrador; retorna o número e os detalhes da versão |
+| `GET` | `/incidentReport/documents/validation/:token/pdf` | Autenticado; somente autor do boletim ou administrador |
+| `POST` | `/incidentReport/documents/validation/:token/revoke` | Autenticado; somente autor do boletim ou administrador |
+
+O PDF é armazenado como versão imutável na coleção `BoletimDocumento`, junto ao hash SHA-256, hash do token, número da versão, revisão do boletim e metadados mínimos de emissão. O token aleatório não contém dados pessoais. A consulta pública confirma a integridade e o estado, sem revelar o número do boletim nem entregar a cópia integral. Edições incrementam `documentRevision` e substituem as versões anteriores; `currentDocumentVersion` identifica a versão emitida mais recente. Número e cópia só são liberados a uma conta autorizada. Emissões e alterações de estado ficam associadas à versão, e downloads autorizados geram registros mínimos na coleção `BoletimDocumentoAcesso`, sem armazenar conteúdo ou IP. O limitador de consultas públicas usa memória do processo; ambientes com múltiplas instâncias devem configurar um armazenamento compartilhado. Exclusões, status de cancelamento institucional e assinatura digital qualificada ainda não existem no modelo atual e não são declarados pelo PDF.
+
+O botão único **Imprimir** emite o PDF a partir dos dados persistidos e abre a cópia final, com o QR Code ao final; a mesma versão armazenada é oferecida na validação online apenas a usuários autorizados. Os logotipos do cabeçalho são os mesmos arquivos já utilizados pela impressão do frontend. O QR Code não libera publicamente os dados integrais do boletim.
+O host do frontend deve encaminhar `/validar-boletim/*` para o `index.html` da SPA. Em produção, o domínio configurado em `PUBLIC_VALIDATION_BASE_URL` deve ser servido por HTTPS.
+
+### Revisão de texto
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/api/verify-text` | Recebe `{ "text": "..." }` e solicita revisão de texto |
 ---
-
-## 🔒 Segurança  
-
-- **Autenticação com JWT**  
-- **Proteção contra injeção SQL e XSS**  
-- **Uso de Helmet para segurança HTTP**  
-
----
-
-## 📌 Melhorias Futuras  
-
-✔ Adicionar testes de integração.  
-
-
----
-
 
 ## 📜 Licença  
 

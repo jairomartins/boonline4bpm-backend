@@ -26,6 +26,12 @@ const UserSchema = new mongoose.Schema({
         type:String,
         default:"comum"
     },
+    roleKey:{
+        type:String,
+        lowercase:true,
+        trim:true,
+        index:true
+    },
     isAtivo:{
         type:String,
         default:false
@@ -37,6 +43,12 @@ const UserSchema = new mongoose.Schema({
         type:String,
     },
     userBarra:{
+        type:String,
+    },
+    passwordResetTokenHash:{
+        type:String,
+    },
+    emailConfirmationTokenHash:{
         type:String,
     },
 },{

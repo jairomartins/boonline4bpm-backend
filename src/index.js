@@ -20,7 +20,10 @@ app.use(bodyParser.urlencoded({ extended: false })); // Suporte to URL-encoded b
 
 // Routes
 require('./http/route')(app);
+require('./http/docsRoute')(app);
 require('./http/incidentReportRoute')(app);
+require('./http/naturezaRoute')(app);
+require('./http/roleRoute')(app);
 require('./http/userRoute')(app);
 require('./http/authRouter')(app);
 require('./http/verifyTextRoute')(app);
