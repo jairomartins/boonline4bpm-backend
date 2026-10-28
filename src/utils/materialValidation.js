@@ -1,4 +1,9 @@
-const tiposItem = ['veiculo', 'arma_fogo', 'droga', 'outro_objeto']
+const tiposItem = ['veiculo', 'arma_fogo', 'arma_branca', 'droga', 'outro_objeto']
+const tiposArmaBranca = [
+    'Faca', 'Facão', 'Canivete', 'Punhal', 'Espada', 'Machado', 'Foice',
+    'Instrumento perfurocortante', 'Outro'
+]
+const estadosConservacaoArmaBranca = ['integro', 'danificado', 'outro']
 const participacoes = ['apreendido', 'encontrado', 'subtraido', 'apreendido_infracao_transito']
 const unidadesOutraDroga = ['g', 'ml', 'frasco', 'unidade', 'comprimido']
 const unidadesPadraoDroga = {
@@ -17,6 +22,14 @@ const unidadesPadraoDroga = {
 
 const temTexto = value => typeof value === 'string' && value.trim().length > 0
 const quantidadeValida = value => Number.isFinite(Number(value)) && Number(value) > 0
+const quantidadeInteiraPositiva = value =>
+    (typeof value === 'number' || typeof value === 'string') &&
+    (typeof value !== 'string' || value.trim() !== '') &&
+    Number.isInteger(Number(value)) && Number(value) > 0
+const numeroPositivo = value =>
+    (typeof value === 'number' || typeof value === 'string') &&
+    (typeof value !== 'string' || value.trim() !== '') &&
+    Number.isFinite(Number(value)) && Number(value) > 0
 const validarParticipacoes = (values, tipoItem) => {
     const permitidas = tipoItem === 'veiculo'
         ? participacoes
@@ -37,6 +50,7 @@ function validarItem(item, index) {
     const dados = item[
         item.tipoItem === 'veiculo' ? 'dadosVeiculo' :
         item.tipoItem === 'arma_fogo' ? 'dadosArma' :
+        item.tipoItem === 'arma_branca' ? 'dadosArmaBranca' :
         item.tipoItem === 'droga' ? 'dadosDroga' : 'dadosObjeto'
     ]
     if (!dados || typeof dados !== 'object' || Array.isArray(dados)) {
@@ -45,10 +59,13 @@ function validarItem(item, index) {
     if (!validarParticipacoes(dados.participacoes, item.tipoItem)) {
         return `${prefixo}: participação na ocorrência inválida.`
     }
-    const camposDeOutraCategoria = ['dadosVeiculo', 'dadosArma', 'dadosDroga', 'dadosObjeto']
+    const camposDeOutraCategoria = [
+        'dadosVeiculo', 'dadosArma', 'dadosArmaBranca', 'dadosDroga', 'dadosObjeto'
+    ]
         .filter(campo => campo !== (
             item.tipoItem === 'veiculo' ? 'dadosVeiculo' :
             item.tipoItem === 'arma_fogo' ? 'dadosArma' :
+            item.tipoItem === 'arma_branca' ? 'dadosArmaBranca' :
             item.tipoItem === 'droga' ? 'dadosDroga' : 'dadosObjeto'
         ))
     if (camposDeOutraCategoria.some(campo =>
@@ -112,6 +129,39 @@ function validarItem(item, index) {
         }
         if (dados.informacoesCarga !== undefined && typeof dados.informacoesCarga !== 'boolean') {
             return `${prefixo}: informação sobre carregamento inválida.`
+        }
+        return null
+    }
+
+    if (item.tipoItem === 'arma_branca') {
+        if (!tiposArmaBranca.includes(dados.tipoArmaBranca)) {
+            return `${prefixo}: selecione um tipo de arma branca válido.`
+        }
+        if (!quantidadeInteiraPositiva(dados.quantidade)) {
+            return `${prefixo}: informe uma quantidade inteira positiva.`
+        }
+        const limitesTexto = {
+            descricao: 500,
+            marca: 120,
+            materialFabricacao: 120,
+            caracteristicasDistintivas: 500,
+            observacoes: 1000
+        }
+        for (const [campo, limite] of Object.entries(limitesTexto)) {
+            const valor = dados[campo]
+            if (valor !== undefined && valor !== null &&
+                (typeof valor !== 'string' || valor.length > limite)) {
+                return `${prefixo}: o campo ${campo} deve ter no máximo ${limite} caracteres.`
+            }
+        }
+        if (dados.comprimentoAproximadoCm !== undefined &&
+            dados.comprimentoAproximadoCm !== null && dados.comprimentoAproximadoCm !== '' &&
+            !numeroPositivo(dados.comprimentoAproximadoCm)) {
+            return `${prefixo}: informe um comprimento positivo em centímetros.`
+        }
+        if (dados.estadoConservacao &&
+            !estadosConservacaoArmaBranca.includes(dados.estadoConservacao)) {
+            return `${prefixo}: estado de conservação inválido.`
         }
         return null
     }

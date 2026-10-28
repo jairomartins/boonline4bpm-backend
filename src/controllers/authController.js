@@ -60,7 +60,8 @@ exports.register = async (req, res) => {
             userBarra,
             roleKey: 'basico',
             tipo: 'comum',
-            isAtivo: true
+            isAtivo: false,
+            accessPending: true
         });
 
         const confirmationToken = gerarTokenConfirmacao(newUser._id)
@@ -69,7 +70,7 @@ exports.register = async (req, res) => {
         await sendMailConfirm(userEmail, confirmationToken)
 
         return res.status(201).json({ 
-            message: `Usuário ${newUser.userName} registrado com sucesso! Confirme o cadastro no seu e-mail.` 
+            message: `Solicitação de cadastro recebida para ${newUser.userName}. Confirme seu e-mail; um administrador liberará o acesso à sua conta.`
         });
 
     } catch (err) {
@@ -99,6 +100,9 @@ exports.login = async(req,res)=>{
             return res.status(403).json({ message: "Confirme seu e-mail antes de entrar.", authenticated: false })
         }
         if (!isAccountActive(user)) {
+            if (user.accessPending) {
+                return res.status(403).json({ message: "Seu e-mail foi confirmado e sua solicitação aguarda liberação de um administrador.", authenticated: false })
+            }
             return res.status(403).json({ message: "Sua conta está desativada. Solicite a reativação à administração.", authenticated: false })
         }
         const isMatch = await bcrypt.compare(userPassword,user.userPassword)
@@ -236,11 +240,11 @@ exports.confirmEmail = async (req, res) => {
         const tokenHash = crypto.createHash('sha256').update(req.params.token).digest('hex')
         const confirmedUser = await User.findOneAndUpdate(
             { _id: userId, emailConfirmationTokenHash: tokenHash },
-            { $set: { isAtivo: 'true' }, $unset: { emailConfirmationTokenHash: 1 } },
+            { $unset: { emailConfirmationTokenHash: 1 } },
             { new: true }
         )
         if (!confirmedUser) return res.status(400).send('Invalid or already used confirmation link.')
-        return res.status(200).send('Email confirmed. You can now sign in.')
+        return res.status(200).send('E-mail confirmado. Sua solicitação aguarda a liberação de um administrador.')
     } catch (error) {
         if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError' || error.message === 'Invalid email confirmation token') {
             return res.status(400).send('Invalid or expired confirmation link.')

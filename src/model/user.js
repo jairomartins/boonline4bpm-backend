@@ -36,6 +36,10 @@ const UserSchema = new mongoose.Schema({
         type:String,
         default:false
     },
+    accessPending:{
+        type:Boolean,
+        default:false
+    },
     userGraduacao:{
         type:String,
     },

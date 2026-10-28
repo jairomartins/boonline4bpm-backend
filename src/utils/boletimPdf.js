@@ -10,6 +10,10 @@ const RIGHT = 48
 const TOP = 118
 const BOTTOM = 42
 const CONTENT_WIDTH = PAGE_WIDTH - LEFT - RIGHT
+const OFFICER_SIGNATURE_HEIGHT = 56
+const OFFICER_SECTION_TITLE = 'EFETIVO EMPREGADO'
+const DELIVERY_SIGNATURE_HEIGHT = 112
+const QR_SIZE = 75
 const PMMA_LOGO = fs.readFileSync(path.join(__dirname, '../assets/logo_pmma.png'))
 const BATTALION_LOGO = fs.readFileSync(path.join(__dirname, '../assets/logo_4bpm.png'))
 
@@ -44,6 +48,7 @@ const INVOLVED_FIELDS = [
 const MATERIAL_CATEGORIES = {
     veiculo: ['Veículo', 'dadosVeiculo'],
     arma_fogo: ['Arma de fogo', 'dadosArma'],
+    arma_branca: ['Arma branca', 'dadosArmaBranca'],
     droga: ['Droga', 'dadosDroga'],
     outro_objeto: ['Outros objetos/bens', 'dadosObjeto']
 }
@@ -75,12 +80,18 @@ const MATERIAL_LABELS = {
     numeroSerie: 'Número de série',
     situacaoNumeroSerie: 'Situação do número de série',
     tipoDroga: 'Tipo de droga',
+    tipoArmaBranca: 'Tipo de arma branca',
     substancia: 'Substância',
     quantidade: 'Quantidade',
     unidade: 'Unidade',
     informacoesCarga: 'Faz parte de um carregamento',
     observacoes: 'Observações',
     tipoObjeto: 'Tipo de objeto/bem',
+    descricao: 'Descrição do objeto',
+    materialFabricacao: 'Material de fabricação',
+    comprimentoAproximadoCm: 'Comprimento aproximado',
+    caracteristicasDistintivas: 'Características distintivas',
+    estadoConservacao: 'Estado de conservação',
     participacoes: 'Participação na ocorrência'
 }
 
@@ -122,8 +133,12 @@ function displayValue(value, key) {
         suprimido: 'Suprimido',
         nao_informado: 'Não informado',
         permitido: 'Permitido',
-        restrito: 'Restrito'
+        restrito: 'Restrito',
+        integro: 'Íntegro',
+        danificado: 'Danificado',
+        outro: 'Outro'
     }
+    if (key === 'comprimentoAproximadoCm') return `${value} cm`
     return labels[value] || String(value)
 }
 
@@ -170,9 +185,13 @@ function addHeader(doc) {
 
 function ensureSpace(doc, height) {
     if (doc.y + height > PAGE_HEIGHT - BOTTOM) {
-        doc.addPage()
-        doc.y = 42
+        addPageWithHeader(doc)
     }
+}
+
+function addPageWithHeader(doc) {
+    doc.addPage()
+    addHeader(doc)
 }
 
 function addSection(doc, title) {
@@ -279,23 +298,207 @@ function addMaterial(doc, material) {
     }
 }
 
-function addOfficer(doc, officer) {
-    const fields = [
-        ['VTR', officer.vtr],
-        [`${officer.graduacao || ''} N°`, officer.numeroBarra],
+function officerIdentificationFields(officer) {
+    return [
+        ['Posto/Graduação', officer.graduacao],
         ['Nome', officer.nome],
-        ['ID', officer.id],
-        ['Assinatura', '___________________________']
+        ['Matrícula/ID', officer.id],
+        ['Número/Barra', officer.numeroBarra],
+        ['Função', officer.funcao],
+        ['Unidade', officer.unidade],
+        ['VTR', officer.vtr]
+    ].filter(([, value]) => value !== null && value !== undefined &&
+        String(value).trim() !== '')
+        .map(([label, value]) => `${label}: ${displayValue(value)}`)
+}
+
+function officerBlockHeight(doc, officer, index) {
+    const padding = 8
+    const width = CONTENT_WIDTH - padding * 2 - 10
+    const fields = officerIdentificationFields(officer)
+    doc.font('Helvetica-Bold').fontSize(9)
+    const titleHeight = doc.heightOfString(`POLICIAL ${index + 1}`, { width })
+    doc.font('Helvetica').fontSize(8.5)
+    const fieldsHeight = fields.reduce((height, field) =>
+        height + doc.heightOfString(field, { width, lineGap: 2 }) + 2, 0)
+    return padding + titleHeight + 4 + fieldsHeight + 8 +
+        OFFICER_SIGNATURE_HEIGHT + padding
+}
+
+function addOfficer(doc, officer, index) {
+    const padding = 8
+    const x = LEFT + padding
+    const width = CONTENT_WIDTH - padding * 2
+    const fields = officerIdentificationFields(officer)
+    const blockHeight = officerBlockHeight(doc, officer, index)
+    const top = doc.y
+    const innerX = x + 5
+    const innerWidth = width - 10
+
+    doc.roundedRect(LEFT, top, CONTENT_WIDTH, blockHeight, 4)
+        .strokeColor('#777777').lineWidth(0.6).stroke()
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#000000')
+        .text(`POLICIAL ${index + 1}`, innerX, top + padding, { width: innerWidth })
+
+    let fieldY = top + padding +
+        doc.heightOfString(`POLICIAL ${index + 1}`, { width: innerWidth, font: 'Helvetica-Bold', fontSize: 9 }) + 4
+    doc.font('Helvetica').fontSize(8.5).fillColor('#000000')
+    for (const field of fields) {
+        const height = doc.heightOfString(field, { width: innerWidth, lineGap: 2 })
+        doc.text(field, innerX, fieldY, { width: innerWidth, lineGap: 2 })
+        fieldY += height + 2
+    }
+
+    const signatureTop = fieldY + 8
+    doc.rect(innerX, signatureTop, innerWidth, OFFICER_SIGNATURE_HEIGHT)
+        .strokeColor('#777777').lineWidth(0.6).stroke()
+    doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000')
+        .text('Assinatura do policial militar', innerX + 6, signatureTop + 7, {
+            width: innerWidth - 12
+        })
+    const signatureLineY = signatureTop + 48
+    doc.moveTo(innerX + 12, signatureLineY)
+        .lineTo(innerX + innerWidth - 12, signatureLineY)
+        .strokeColor('#000000').lineWidth(0.6).stroke()
+    doc.y = top + blockHeight + 8
+}
+
+function addOfficerSection(doc, officers) {
+    const firstOfficerHeight = officers.length
+        ? officerBlockHeight(doc, officers[0], 0)
+        : 0
+    ensureSpace(doc, 35 + firstOfficerHeight)
+    addSection(doc, OFFICER_SECTION_TITLE)
+
+    officers.forEach((officer, index) => {
+        const blockHeight = officerBlockHeight(doc, officer, index)
+        if (doc.y + blockHeight > PAGE_HEIGHT - BOTTOM) {
+            addPageWithHeader(doc)
+            addSection(doc, OFFICER_SECTION_TITLE)
+        }
+        addOfficer(doc, officer, index)
+    })
+}
+
+function addDeliverySection(doc, report) {
+    const responsavel = report.responsavelEntrega &&
+        typeof report.responsavelEntrega === 'object'
+        ? report.responsavelEntrega
+        : {}
+    const nomeResponsavel = typeof report.responsavelEntrega === 'string'
+        ? report.responsavelEntrega
+        : responsavel.nome || report.responsavelEntregaNome
+    const unidade = typeof report.unidadeEntrega === 'object'
+        ? report.unidadeEntrega?.nome : report.unidadeEntrega
+    const fields = [
+        ['Unidade', unidade],
+        ['Data', report.dataEntrega],
+        ['Hora', report.horaEntrega],
+        ['Matrícula', responsavel.matricula || responsavel.id ||
+            report.matriculaResponsavelEntrega],
+        ['Nome', nomeResponsavel]
     ]
-    const value = fields.map(([label, field]) =>
-        `${label}: ${displayValue(field)}`
-    ).join('   ')
-    addWideField(doc, '', value)
+    const textWidth = CONTENT_WIDTH - 20
+    const rows = fields.map(([label, value]) => {
+        const text = displayValue(value)
+        const height = text
+            ? Math.max(16, doc.heightOfString(`${label}: ${text}`, {
+                width: textWidth,
+                font: 'Helvetica',
+                fontSize: 8.5,
+                lineGap: 1
+            }) + 4)
+            : 16
+        return { label, text, height }
+    })
+    const titleHeight = 35
+    const gap = 10
+    const cardPadding = 10
+    const cardHeight = cardPadding * 2 +
+        rows.reduce((height, row) => height + row.height, 0) + gap +
+        DELIVERY_SIGNATURE_HEIGHT
+
+    ensureSpace(doc, titleHeight + cardHeight + 8)
+    addSection(doc, 'ASSINATURA DA UNIDADE DE ENTREGA')
+
+    const top = doc.y
+    doc.roundedRect(LEFT, top, CONTENT_WIDTH, cardHeight, 4)
+        .strokeColor('#777777').lineWidth(0.6).stroke()
+    let fieldY = top + cardPadding
+    for (const { label, text, height } of rows) {
+        const labelText = `${label}:`
+        if (text) {
+            doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000')
+                .text(labelText, LEFT + cardPadding, fieldY, {
+                    continued: true,
+                    width: CONTENT_WIDTH - cardPadding * 2
+                })
+            doc.font('Helvetica').fontSize(8.5).fillColor('#000000')
+                .text(` ${text}`, { width: CONTENT_WIDTH - cardPadding * 2, lineGap: 1 })
+        } else {
+            doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000')
+                .text(labelText, LEFT + cardPadding, fieldY)
+            const labelWidth = doc.widthOfString(labelText, { font: 'Helvetica-Bold', fontSize: 8.5 })
+            const lineStart = Math.min(LEFT + cardPadding + labelWidth + 6, LEFT + CONTENT_WIDTH / 2)
+            doc.moveTo(lineStart, fieldY + 10)
+                .lineTo(LEFT + CONTENT_WIDTH - cardPadding, fieldY + 10)
+                .strokeColor('#777777').lineWidth(0.4).stroke()
+        }
+        fieldY += height
+    }
+
+    const signatureTop = top + cardPadding +
+        rows.reduce((height, row) => height + row.height, 0) + gap
+    const signatureX = LEFT + cardPadding
+    const signatureWidth = CONTENT_WIDTH - cardPadding * 2
+    doc.rect(signatureX, signatureTop, signatureWidth, DELIVERY_SIGNATURE_HEIGHT)
+        .strokeColor('#777777').lineWidth(0.6).stroke()
+    doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000')
+        .text('Assinatura do agente', signatureX + 6, signatureTop + 7, {
+            width: signatureWidth - 12
+        })
+    const signatureLineY = signatureTop + DELIVERY_SIGNATURE_HEIGHT - 10
+    doc.moveTo(signatureX + 12, signatureLineY)
+        .lineTo(signatureX + signatureWidth - 12, signatureLineY)
+        .strokeColor('#000000').lineWidth(0.6).stroke()
+    doc.y = top + cardHeight + 8
+}
+
+function addPageIdentification(doc, report) {
+    const range = doc.bufferedPageRange()
+    if (range.count <= 1) return
+
+    const lastPage = range.start + range.count - 1
+    const currentY = doc.y
+    const footerY = PAGE_HEIGHT - BOTTOM + 6
+    const identifier = report.numero ? `BOLETIM Nº ${report.numero}` : 'BOLETIM'
+
+    for (let pageIndex = range.start; pageIndex <= lastPage; pageIndex += 1) {
+        doc.switchToPage(pageIndex)
+        const bottomMargin = doc.page.margins.bottom
+        doc.page.margins.bottom = 0
+        doc.font('Helvetica').fontSize(8).fillColor('#000000')
+            .text(identifier, LEFT, footerY, {
+                width: CONTENT_WIDTH / 2,
+                lineBreak: false
+            })
+            .text(`Página ${pageIndex - range.start + 1} de ${range.count}`,
+                PAGE_WIDTH - RIGHT - CONTENT_WIDTH / 2, footerY, {
+                    width: CONTENT_WIDTH / 2,
+                    align: 'right',
+                    lineBreak: false
+                })
+        doc.page.margins.bottom = bottomMargin
+    }
+
+    doc.switchToPage(lastPage)
+    doc.y = currentY
 }
 
 async function gerarPdfBoletim({ report, validationUrl }) {
     const doc = new PDFDocument({
         size: 'A4',
+        bufferPages: true,
         margins: { top: TOP, bottom: BOTTOM, left: LEFT, right: RIGHT },
         info: {
             Title: `BO_${report.numero || 'boletim'}_${report.data || ''}`,
@@ -345,17 +548,12 @@ async function gerarPdfBoletim({ report, validationUrl }) {
     const history = plainText(report.historicohtml)
     if (history) {
         doc.font('Helvetica').fontSize(8.5).fillColor('#000000')
-            .text(history, { width: CONTENT_WIDTH, lineGap: 2 })
+            .text(history, { width: CONTENT_WIDTH, lineGap: 2, align: 'justify' })
     }
 
-    addSection(doc, 'EFETIVO EMPREGADO')
-    for (const officer of Array.isArray(report.efetivo) ? report.efetivo : []) {
-        addOfficer(doc, officer)
-    }
+    addOfficerSection(doc, Array.isArray(report.efetivo) ? report.efetivo : [])
 
-    addSection(doc, 'UNIDADE DE ENTREGA')
-    addWideField(doc, '', 'Unidade ___________________________    Data _______/________/_______    Hora _________:_________')
-    addWideField(doc, '', 'Matrícula ___________________________    Nome ______________________________    Assinatura ___________________________')
+    addDeliverySection(doc, report)
 
     const qr = await QRCode.toBuffer(validationUrl, {
         type: 'png',
@@ -363,17 +561,24 @@ async function gerarPdfBoletim({ report, validationUrl }) {
         margin: 2,
         width: 220
     })
-    const qrSize = 150
-    if (doc.y + qrSize > PAGE_HEIGHT - BOTTOM) {
-        doc.addPage()
-        doc.y = 42
+    const qrCaptionHeight = 16
+    if (doc.y + QR_SIZE + qrCaptionHeight + 8 > PAGE_HEIGHT - BOTTOM) {
+        addPageWithHeader(doc)
     }
-    doc.image(qr, (PAGE_WIDTH - qrSize) / 2, doc.y, {
-        width: qrSize,
-        height: qrSize
+    const qrX = (PAGE_WIDTH - QR_SIZE) / 2
+    const qrY = doc.y
+    doc.image(qr, qrX, qrY, {
+        width: QR_SIZE,
+        height: QR_SIZE
     })
-    doc.link((PAGE_WIDTH - qrSize) / 2, doc.y, qrSize, qrSize, validationUrl)
+    doc.link(qrX, qrY, QR_SIZE, QR_SIZE, validationUrl)
+    doc.font('Helvetica').fontSize(8).fillColor('#000000')
+        .text('Versão digital do boletim', LEFT, qrY + QR_SIZE + 4, {
+            width: CONTENT_WIDTH,
+            align: 'center'
+        })
 
+    addPageIdentification(doc, report)
     doc.end()
     await completed
     return Buffer.concat(chunks)

@@ -17,6 +17,21 @@ function expandPermissions(permissions = []) {
     return [...effective]
 }
 
+function isUserInIncidentReportEffective(user, report) {
+    if (!user || !report || !Array.isArray(report.efetivo)) return false
+    const identifiers = new Set([
+        user.userMatriculaId,
+        user.userBarra,
+        user.userNumero
+    ].filter(value => typeof value === 'string' && value.trim()).map(value => value.trim()))
+    if (!identifiers.size) return false
+    return report.efetivo.some(policial =>
+        [policial.id, policial.numeroBarra].some(value =>
+            typeof value === 'string' && identifiers.has(value.trim())
+        )
+    )
+}
+
 async function getEffectiveAccess(userId) {
     const userQuery = User.findById(userId)
     const user = userQuery && typeof userQuery.lean === 'function'
@@ -92,5 +107,6 @@ module.exports = {
     isAdministratorUser,
     requirePermission,
     requireAnyPermission,
-    protectLastAdministratorRemoval
+    protectLastAdministratorRemoval,
+    isUserInIncidentReportEffective
 }

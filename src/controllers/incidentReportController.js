@@ -4,8 +4,12 @@ const IncidentReport = require('../model/boletim')
 const mongoose = require('mongoose')
 const Natureza = require('../model/natureza')
 const { validarMateriaisApreendidos } = require('../utils/materialValidation')
-const { getEffectiveAccess } = require('../utils/authorization')
+const {
+    getEffectiveAccess,
+    isUserInIncidentReportEffective
+} = require('../utils/authorization')
 const boletimDocumentoController = require('./boletimDocumentoController')
+const { parseIncidentDate } = require('../utils/incidentDate')
 const {
     isValidCpf,
     mesclarEnvolvidosExistentes,
@@ -84,7 +88,8 @@ exports.createOrUpdateIncidentReport = async (req, res) => {
             const access = await getEffectiveAccess(req.user.userId)
             if (!access) return res.status(401).json({ message: 'Conta inexistente ou desativada.' })
             const isOwner = String(existing.creatorId) === String(req.user.userId)
-            if (isOwner && !access.permissions.includes('boletins.edit.own')) {
+            if (isOwner && !access.permissions.includes('boletins.edit.own') &&
+                !access.permissions.includes('boletins.edit.all')) {
                 return res.status(403).json({ message: 'Você não possui permissão para editar boletins.' })
             }
             if (!isOwner && !access.permissions.includes('boletins.edit.all')) {
@@ -109,6 +114,8 @@ exports.createOrUpdateIncidentReport = async (req, res) => {
                 return res.status(naturezasRecebidas.status).json({ message: naturezasRecebidas.error })
             }
             const updateData = { ...incidentReportData }
+            delete updateData.dataOcorrencia
+            updateData.dataOcorrencia = parseIncidentDate(incidentReportData.data)
             if (coordenadasAtualizadas) {
                 delete updateData.latitude
                 delete updateData.longitude
@@ -200,6 +207,7 @@ exports.createOrUpdateIncidentReport = async (req, res) => {
             const ids = documentos.map(documento => documento._id)
             const newIncidentReport = {
                 ...incidentReportData,
+                dataOcorrencia: parseIncidentDate(incidentReportData.data),
                 natureza: documentos.map(documento => documento.nome).join('; '),
                 naturezaId: ids.length === 1 ? ids[0] : null,
                 naturezaIds: ids,
@@ -369,7 +377,11 @@ exports.incidentReportByID = async (req, res)=>{
         if (!access) return res.status(401).json({ message: 'Conta inexistente ou desativada.' })
         const canViewAll = access.permissions.includes('boletins.view.all')
         const canViewOwn = access.permissions.includes('boletins.view.own')
-        if (!canViewAll && (!canViewOwn || String(incidentReport.creatorId) !== String(req.user.userId))) {
+        const canViewOwnReport = canViewOwn && (
+            String(incidentReport.creatorId) === String(req.user.userId) ||
+            isUserInIncidentReportEffective(access.user, incidentReport)
+        )
+        if (!canViewAll && !canViewOwnReport) {
             return res.status(404).json({ message: "Boletim não encontrado." })
         }
         return res.status(200).json(incidentReport)
@@ -533,6 +545,21 @@ function escapeRegex(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+function parseNatureFilterValues(...queryValues) {
+    return [...new Set(queryValues
+        .flatMap(value => value === undefined || value === null
+            ? []
+            : (Array.isArray(value) ? value : [value])
+                .flatMap(item => String(item).split(',')))
+        .map(value => String(value).trim())
+        .filter(Boolean))]
+}
+
+function isValidNatureFilterValues(values) {
+    return values.length <= 1000 && values.every(value =>
+        value === 'pendente' || /^[0-9a-fA-F]{24}$/.test(value))
+}
+
 exports.incidentReportGeographicOptions = async (req, res) => {
     const municipality = typeof req.query.municipality === 'string'
         ? req.query.municipality.trim()
@@ -565,9 +592,10 @@ exports.incidentReportGeographicOptions = async (req, res) => {
 
 exports.incidentReportGeographic = async (req, res) => {
     const {
-        from, to, municipality, natureId, bairro, dateField = 'fact',
+        from, to, municipality, natureId, natureIds: natureIdsQuery, bairro, dateField = 'fact',
         groupBy = 'month', page = '1', pointPage = '1', pageSize = '100'
     } = req.query
+    const selectedNatureValues = parseNatureFilterValues(natureId, natureIdsQuery)
     const startDate = String(from || '')
     const endDate = String(to || '')
     if (!isValidIsoDate(startDate) || !isValidIsoDate(endDate) || startDate > endDate) {
@@ -588,7 +616,7 @@ exports.incidentReportGeographic = async (req, res) => {
     if (!['day', 'week', 'month'].includes(String(groupBy))) {
         return res.status(400).json({ message: 'Agrupamento temporal inválido.' })
     }
-    if (natureId && natureId !== 'pendente' && !/^[0-9a-fA-F]{24}$/.test(String(natureId))) {
+    if (!isValidNatureFilterValues(selectedNatureValues)) {
         return res.status(400).json({ message: 'Natureza inválida.' })
     }
     const pageNumber = Number(page)
@@ -606,17 +634,39 @@ exports.incidentReportGeographic = async (req, res) => {
     const match = { municipio: municipality.trim() }
     if (bairro) match.bairro = String(bairro).trim()
     if (dateField === 'registered') match.createdAt = { $gte: start, $lte: end }
-    let selectedNature = null
-    if (natureId === 'pendente') {
+    if (dateField === 'fact') {
         match.$and = [{
             $or: [
-                { naturezaId: null, naturezaIds: { $exists: false } },
-                { naturezaId: null, naturezaIds: [] }
+                { dataOcorrencia: { $gte: start, $lte: end } },
+                { dataOcorrencia: { $exists: false } }
             ]
         }]
-    } else if (natureId) {
-        selectedNature = new mongoose.Types.ObjectId(String(natureId))
-        match.$or = [{ naturezaIds: selectedNature }, { naturezaId: selectedNature }]
+    }
+    const selectedNatureIds = selectedNatureValues
+        .filter(value => value !== 'pendente')
+        .map(value => new mongoose.Types.ObjectId(value))
+    const selectedNatureFacetIds = [
+        ...selectedNatureIds,
+        ...(selectedNatureValues.includes('pendente') ? [null] : [])
+    ]
+    if (selectedNatureValues.length) {
+        const natureConditions = []
+        if (selectedNatureIds.length) {
+            natureConditions.push(
+                { naturezaIds: { $in: selectedNatureIds } },
+                { naturezaId: { $in: selectedNatureIds } }
+            )
+        }
+        if (selectedNatureValues.includes('pendente')) {
+            natureConditions.push({
+                naturezaId: null,
+                $or: [
+                    { naturezaIds: { $exists: false } },
+                    { naturezaIds: { $size: 0 } }
+                ]
+            })
+        }
+        match.$or = natureConditions
     }
 
     const pipeline = [{ $match: match }]
@@ -624,14 +674,14 @@ exports.incidentReportGeographic = async (req, res) => {
         pipeline.push(
             {
                 $addFields: {
-                    _mapDate: {
+                    _mapDate: { $ifNull: ['$dataOcorrencia', {
                         $dateFromString: {
                             dateString: { $ifNull: ['$data', ''] },
                             format: '%d/%m/%Y',
                             onError: null,
                             onNull: null
                         }
-                    }
+                    }] }
                 }
             },
             { $match: { _mapDate: { $gte: start, $lte: end } } }
@@ -845,8 +895,8 @@ exports.incidentReportGeographic = async (req, res) => {
                 natures: [
                     { $match: { _mapCoordinatesValid: true } },
                     { $unwind: '$_mapNatureIds' },
-                    ...(natureId ? [{
-                        $match: { _mapNatureIds: natureId === 'pendente' ? null : selectedNature }
+                    ...(selectedNatureValues.length ? [{
+                        $match: { _mapNatureIds: { $in: selectedNatureFacetIds } }
                     }] : []),
                     {
                         $lookup: {
@@ -894,7 +944,8 @@ exports.incidentReportGeographic = async (req, res) => {
                 from: startDate,
                 to: endDate,
                 municipality: municipality.trim(),
-                natureId: natureId || '',
+                natureId: selectedNatureValues.length === 1 ? selectedNatureValues[0] : '',
+                natureIds: selectedNatureValues,
                 bairro: bairro || '',
                 dateField
             },
@@ -938,7 +989,7 @@ exports.incidentReportGeographic = async (req, res) => {
 }
 
 exports.incidentReportStatistics = async (req, res) => {
-    const { from, to, municipality, nature, natureId } = req.query
+    const { from, to, municipality, nature, natureId, natureIds: natureIdsQuery } = req.query
     const startDate = from || `${new Date().getFullYear()}-01-01`
     const endDate = to || new Date().toISOString().slice(0, 10)
 
@@ -951,28 +1002,36 @@ exports.incidentReportStatistics = async (req, res) => {
     if (nature && String(nature).length > 120) {
         return res.status(400).json({ message: "Natureza inválida." })
     }
-    if (natureId && natureId !== 'pendente' && !/^[0-9a-fA-F]{24}$/.test(String(natureId))) {
+    const selectedNatureValues = parseNatureFilterValues(natureId, natureIdsQuery)
+    if (!isValidNatureFilterValues(selectedNatureValues)) {
         return res.status(400).json({ message: "Natureza inválida." })
     }
 
-    const [fromYear, fromMonth, fromDay] = startDate.split('-').map(Number)
-    const [toYear, toMonth, toDay] = endDate.split('-').map(Number)
-    const start = new Date(fromYear, fromMonth - 1, fromDay)
-    const end = new Date(toYear, toMonth - 1, toDay, 23, 59, 59, 999)
-    const match = {
-        _parsedIncidentDate: { $gte: start, $lte: end }
-    }
+    const start = new Date(`${startDate}T00:00:00.000Z`)
+    const end = new Date(`${endDate}T23:59:59.999Z`)
+    const match = {}
     if (municipality) match.municipio = String(municipality).trim()
-    if (natureId === 'pendente') {
-        match.naturezaId = null
-        match.$or = [
-            { naturezaIds: { $exists: false } },
-            { naturezaIds: { $size: 0 } }
-        ]
-    }
-    else if (natureId) {
-        const id = new mongoose.Types.ObjectId(String(natureId))
-        match.$or = [{ naturezaIds: id }, { naturezaId: id }]
+    if (selectedNatureValues.length) {
+        const selectedIds = selectedNatureValues
+            .filter(value => value !== 'pendente')
+            .map(value => new mongoose.Types.ObjectId(value))
+        const natureConditions = []
+        if (selectedIds.length) {
+            natureConditions.push(
+                { naturezaIds: { $in: selectedIds } },
+                { naturezaId: { $in: selectedIds } }
+            )
+        }
+        if (selectedNatureValues.includes('pendente')) {
+            natureConditions.push({
+                naturezaId: null,
+                $or: [
+                    { naturezaIds: { $exists: false } },
+                    { naturezaIds: { $size: 0 } }
+                ]
+            })
+        }
+        match.$or = natureConditions
     }
     else if (nature) match.natureza = {
         $regex: `^${escapeRegex(String(nature).trim())}$`,
@@ -983,18 +1042,34 @@ exports.incidentReportStatistics = async (req, res) => {
         const [result, municipalities, natures] = await Promise.all([
             IncidentReport.aggregate([
                 {
+                    $match: {
+                        ...match,
+                        $and: [
+                            ...(match.$and || []),
+                            {
+                                $or: [
+                                    { dataOcorrencia: { $gte: start, $lte: end } },
+                                    { dataOcorrencia: { $exists: false } }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
                     $addFields: {
                         _parsedIncidentDate: {
-                            $dateFromString: {
-                                dateString: { $ifNull: ['$data', ''] },
-                                format: '%d/%m/%Y',
-                                onError: null,
-                                onNull: null
-                            }
+                            $ifNull: ['$dataOcorrencia', {
+                                $dateFromString: {
+                                    dateString: { $ifNull: ['$data', ''] },
+                                    format: '%d/%m/%Y',
+                                    onError: null,
+                                    onNull: null
+                                }
+                            }]
                         }
                     }
                 },
-                { $match: match },
+                { $match: { _parsedIncidentDate: { $gte: start, $lte: end } } },
                 {
                     $facet: {
                         reports: [{ $sort: { _parsedIncidentDate: -1, _id: -1 } }, { $limit: 10000 }],
@@ -1206,7 +1281,14 @@ exports.incidentReportStatistics = async (req, res) => {
             porFaixaEtaria.set(perfil.faixaEtaria, (porFaixaEtaria.get(perfil.faixaEtaria) || 0) + perfil.pessoas)
         })
         return res.status(200).json({
-            filters: { from: startDate, to: endDate, municipality: municipality || '', nature: nature || '', natureId: natureId || '' },
+            filters: {
+                from: startDate,
+                to: endDate,
+                municipality: municipality || '',
+                nature: nature || '',
+                natureId: selectedNatureValues.length === 1 ? selectedNatureValues[0] : '',
+                natureIds: selectedNatureValues
+            },
             total,
             truncated: total > (statistics.reports || []).length,
             reports: statistics.reports || [],

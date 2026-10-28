@@ -32,7 +32,7 @@ const EnvolvidoSchema = new mongoose.Schema({
 const MaterialSchema = new mongoose.Schema({
     tipoItem: {
         type: String,
-        enum: ['veiculo', 'arma_fogo', 'droga', 'outro_objeto'],
+        enum: ['veiculo', 'arma_fogo', 'arma_branca', 'droga', 'outro_objeto'],
         required: false
     },
     dadosVeiculo: {
@@ -69,6 +69,18 @@ const MaterialSchema = new mongoose.Schema({
         situacaoNumeroSerie: String,
         participacoes: [String],
         informacoesCarga: Boolean
+    },
+    dadosArmaBranca: {
+        tipoArmaBranca: String,
+        descricao: String,
+        quantidade: Number,
+        marca: String,
+        materialFabricacao: String,
+        comprimentoAproximadoCm: Number,
+        caracteristicasDistintivas: String,
+        estadoConservacao: String,
+        observacoes: String,
+        participacoes: [String]
     },
     dadosDroga: {
         tipoDroga: String,
@@ -130,6 +142,7 @@ const BoScheme = new mongoose.Schema({
     naturezaOriginal: { type: String, required: false },
     naturezaCatalogoMigrada: { type: Boolean, required: false },
     data:String,
+    dataOcorrencia: { type: Date, required: false },
     horario:String,
     latitude:String,
     longitude:String,
@@ -146,8 +159,12 @@ const BoScheme = new mongoose.Schema({
 }, { timestamps: true })
 
 BoScheme.index({ municipio: 1, createdAt: -1 })
+BoScheme.index({ dataOcorrencia: 1 })
+BoScheme.index({ municipio: 1, dataOcorrencia: 1 })
 BoScheme.index({ municipio: 1, naturezaIds: 1 })
 BoScheme.index({ municipio: 1, bairro: 1 })
+BoScheme.index({ 'efetivo.id': 1, createdAt: -1 })
+BoScheme.index({ 'efetivo.numeroBarra': 1, createdAt: -1 })
 
 const Boletim = mongoose.model('Boletim',BoScheme)
 

@@ -3,6 +3,7 @@ const userController = require('../controllers/userController');
 const { verificaToken } = require('../lib/jwtconfig');
 const {
     requirePermission,
+    requireAnyPermission,
     protectLastAdministratorRemoval
 } = require('../utils/authorization')
 const exigeAdmin = requirePermission('users.manage')
@@ -40,7 +41,7 @@ function userRoute(app) {
         await userController.currentUser(req, res)
     })
 
-    router.get('/me/incident-reports', verificaToken, exigeIdentidade, requirePermission('boletins.view.own'), async (req, res) => {
+    router.get('/me/incident-reports', verificaToken, exigeIdentidade, requireAnyPermission(['boletins.view.own', 'boletins.view.all']), async (req, res) => {
         await userController.currentUserIncidentReports(req, res)
     })
 

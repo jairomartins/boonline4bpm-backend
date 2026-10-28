@@ -5,6 +5,7 @@ const roleModel = () => require('../model/role')
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
 const incidentReport = require('../model/boletim')
+const { getEffectiveAccess } = require('../utils/authorization')
 
 //list all users on db
 exports.usersList = async (req, res)=>{
@@ -14,7 +15,9 @@ exports.usersList = async (req, res)=>{
             .lean()
         const normalizedUsers = usersList.map(item => ({
             ...(item.toObject ? item.toObject() : item),
-            roleKey: item.roleKey || (item.tipo === 'admin' ? 'administrador' : 'basico')
+            roleKey: item.roleKey || (item.tipo === 'admin' ? 'administrador' : 'basico'),
+            emailConfirmed: !item.emailConfirmationTokenHash,
+            accessPending: Boolean(item.accessPending)
         }))
         return res.status(200).json(normalizedUsers)
     }catch(err){
@@ -93,48 +96,154 @@ exports.currentUserIncidentReports = async (req, res) => {
     const page = req.query.page === undefined ? 1 : Number(req.query.page)
     const limit = req.query.limit === undefined ? 10 : Number(req.query.limit)
     if (!Number.isSafeInteger(page) || page < 1 ||
-        !Number.isSafeInteger(limit) || limit < 1 || limit > 10 ||
+        !Number.isSafeInteger(limit) || limit !== 10 ||
         !Number.isSafeInteger((page - 1) * limit)) {
-        return res.status(400).json({ message: 'A paginação deve usar página positiva e limite entre 1 e 10.' })
+        return res.status(400).json({ message: 'A paginação deve usar página positiva e limite igual a 10.' })
+    }
+
+    const { numero, dataInicio, dataFim, municipio, natureza, bairro } = req.query
+    const filters = {}
+    if (numero !== undefined) {
+        const value = String(numero).trim()
+        if (!value || value.length > 50) {
+            return res.status(400).json({ message: 'O número do boletim deve ter entre 1 e 50 caracteres.' })
+        }
+        filters.numero = { $regex: escapeRegex(value), $options: 'i' }
+    }
+    if (municipio !== undefined) {
+        const value = String(municipio).trim()
+        if (value.length > 100) return res.status(400).json({ message: 'O município deve ter até 100 caracteres.' })
+        if (value) filters.municipio = { $regex: escapeRegex(value), $options: 'i' }
+    }
+    if (natureza !== undefined) {
+        const value = String(natureza).trim()
+        if (value.length > 120) return res.status(400).json({ message: 'A natureza deve ter até 120 caracteres.' })
+        if (value) filters.natureza = { $regex: escapeRegex(value), $options: 'i' }
+    }
+    if (bairro !== undefined) {
+        const value = String(bairro).trim()
+        if (value.length > 100) return res.status(400).json({ message: 'O bairro deve ter até 100 caracteres.' })
+        if (value) filters.bairro = { $regex: escapeRegex(value), $options: 'i' }
+    }
+
+    const parsedDateStart = parseIsoDate(dataInicio)
+    const parsedDateEnd = parseIsoDate(dataFim)
+    if (dataInicio !== undefined && !parsedDateStart) {
+        return res.status(400).json({ message: 'A data inicial deve ser válida e usar o formato AAAA-MM-DD.' })
+    }
+    if (dataFim !== undefined && !parsedDateEnd) {
+        return res.status(400).json({ message: 'A data final deve ser válida e usar o formato AAAA-MM-DD.' })
+    }
+    if (parsedDateStart && parsedDateEnd && parsedDateStart > parsedDateEnd) {
+        return res.status(400).json({ message: 'A data inicial não pode ser posterior à data final.' })
     }
 
     try {
-        const currentUser = await user.findById(req.user.userId)
-            .select('userMatriculaId userBarra userNumero')
-            .lean()
+        const access = req.access || await getEffectiveAccess(req.user.userId)
+        if (!access) return res.status(401).json({ message: 'Conta inexistente ou desativada.' })
+        const currentUser = access.user
         if (!currentUser) return res.status(404).json({ message: 'Usuário não encontrado.' })
 
-        const identifiers = [
+        const identifiers = [...new Set([
             currentUser.userMatriculaId,
             currentUser.userBarra,
             currentUser.userNumero
-        ].filter((value) => typeof value === 'string' && value.trim())
-            .map((value) => value.trim())
-        const participantConditions = [...new Set(identifiers)].flatMap((value) => [
+        ].filter(value => typeof value === 'string' && value.trim()).map(value => value.trim()))]
+        if (!identifiers.length) {
+            return res.status(200).json({ reports: [], page, limit, hasMore: false, total: 0 })
+        }
+        const participantConditions = identifiers.flatMap(value => [
             { 'efetivo.id': value },
             { 'efetivo.numeroBarra': value }
         ])
-        const query = participantConditions.length
-            ? { $or: [{ creatorId: String(req.user.userId) }, ...participantConditions] }
-            : { creatorId: String(req.user.userId) }
-
-        const reports = await incidentReport.find(query)
-            .select('numero natureza data horario municipio createdAt creatorId efetivo.id')
-            .sort({ createdAt: -1, _id: -1 })
-            .skip((page - 1) * limit)
-            .limit(limit + 1)
-            .lean()
-        const hasMore = reports.length > limit
-        const items = reports.slice(0, limit).map((report) => ({
-            ...report,
-            isCreator: report.creatorId === String(req.user.userId)
-        }))
-
-        return res.status(200).json({ reports: items, page, limit, hasMore })
+        const match = {
+            $and: [
+                { $or: participantConditions },
+                ...Object.entries(filters).map(([field, value]) => ({ [field]: value }))
+            ]
+        }
+        const dateRange = {}
+        if (parsedDateStart) dateRange.$gte = parsedDateStart
+        if (parsedDateEnd) {
+            const exclusiveEnd = new Date(parsedDateEnd)
+            exclusiveEnd.setUTCDate(exclusiveEnd.getUTCDate() + 1)
+            dateRange.$lt = exclusiveEnd
+        }
+        const pipeline = [
+            { $match: match },
+            { $sort: { createdAt: -1, _id: -1 } },
+            {
+                $addFields: {
+                    _profileReportDate: {
+                        $dateFromString: {
+                            dateString: '$data',
+                            format: '%d/%m/%Y',
+                            onError: {
+                                $dateFromString: {
+                                    dateString: '$data',
+                                    onError: null,
+                                    onNull: null
+                                }
+                            },
+                            onNull: null
+                        }
+                    }
+                }
+            },
+            ...(Object.keys(dateRange).length
+                ? [{ $match: { _profileReportDate: dateRange } }]
+                : []),
+            {
+                $facet: {
+                    reports: [
+                        { $skip: (page - 1) * limit },
+                        { $limit: limit + 1 },
+                        {
+                            $project: {
+                                numero: 1,
+                                natureza: 1,
+                                data: 1,
+                                horario: 1,
+                                municipio: 1,
+                                bairro: 1,
+                                endereco: 1,
+                                numeroEndereco: 1,
+                                createdAt: 1,
+                                creatorId: 1,
+                                isCreator: { $eq: ['$creatorId', String(req.user.userId)] }
+                            }
+                        }
+                    ],
+                    metadata: [{ $count: 'total' }]
+                }
+            }
+        ]
+        const [result = { reports: [], metadata: [] }] = await incidentReport.aggregate(pipeline).allowDiskUse(true)
+        const hasMore = result.reports.length > limit
+        return res.status(200).json({
+            reports: result.reports.slice(0, limit),
+            page,
+            limit,
+            hasMore,
+            total: result.metadata[0]?.total || 0
+        })
     } catch (err) {
         console.error('Erro ao buscar boletins do usuário:', err)
         return res.status(500).json({ message: 'Não foi possível carregar seus boletins.' })
     }
+}
+
+function escapeRegex(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function parseIsoDate(value) {
+    if (value === undefined) return null
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+    const date = new Date(`${value}T00:00:00.000Z`)
+    return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value
+        ? null
+        : date
 }
 
 exports.updateCurrentUser = async (req, res) => {

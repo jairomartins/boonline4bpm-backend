@@ -280,3 +280,21 @@ test('uses the assigned role instead of legacy tipo when identifying administrat
     assert.equal(isAdministratorUser({ roleKey: 'administrador', tipo: 'comum' }), true)
     assert.equal(isAdministratorUser({ tipo: 'admin' }), true)
 })
+
+test('requires email confirmation before an administrator activates a new account', async () => {
+    const target = users.get(basicId)
+    target.emailConfirmationTokenHash = 'pending-confirmation'
+    target.accessPending = true
+    const pendingApproval = response()
+    await controller.setUserStatus(request({ active: true }, { id: basicId }), pendingApproval)
+    assert.equal(pendingApproval.statusCode, 409)
+    assert.equal(target.isAtivo, 'true')
+
+    delete target.emailConfirmationTokenHash
+    target.isAtivo = 'false'
+    const approved = response()
+    await controller.setUserStatus(request({ active: true }, { id: basicId }), approved)
+    assert.equal(approved.statusCode, 200)
+    assert.equal(target.isAtivo, 'true')
+    assert.equal(target.accessPending, false)
+})

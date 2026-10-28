@@ -215,12 +215,16 @@ exports.setUserStatus = async (req, res) => {
     try {
         const target = await User.findById(req.params.id)
         if (!target) return res.status(404).json({ message: 'Usuário não encontrado.' })
+        if (active && target.emailConfirmationTokenHash) {
+            return res.status(409).json({ message: 'O usuário precisa confirmar o e-mail antes da liberação do acesso.' })
+        }
         if (!active && isAdministratorUser(target) &&
             (await activeAdministratorCount()) <= 1) {
             return res.status(409).json({ message: 'Não é possível desativar a última conta administrativa ativa.' })
         }
         const previousActive = target.isAtivo
         target.isAtivo = String(active)
+        target.accessPending = false
         await target.save()
         await writeAudit(req, active ? 'user.activated' : 'user.deactivated', 'user', target._id, {
             previousActive,

@@ -9,6 +9,7 @@
     "test": "node --test",
     "migrate:roles": "node src/scripts/migrateRoles.js",
     "migrate:naturezas": "node src/scripts/migrateNaturezas.js",
+    "migrate:incident-dates": "node src/scripts/backfillIncidentDates.js",
     "seed:naturezas": "node src/scripts/seedNaturezas.js"
   },
   "repository": {

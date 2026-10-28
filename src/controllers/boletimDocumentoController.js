@@ -5,7 +5,7 @@ const IncidentReport = require('../model/boletim')
 const BoletimDocumento = require('../model/boletimDocumento')
 const BoletimDocumentoAcesso = require('../model/boletimDocumentoAcesso')
 const { gerarPdfBoletim } = require('../utils/boletimPdf')
-const { getEffectiveAccess } = require('../utils/authorization')
+const { getEffectiveAccess, isUserInIncidentReportEffective } = require('../utils/authorization')
 
 const PDF_LAYOUT_VERSION = 3
 
@@ -49,7 +49,8 @@ async function canAccessReport(req, report) {
     if (!access) return false
     return access.permissions.includes('boletins.view.all') ||
         (access.permissions.includes('boletins.view.own') &&
-            String(report.creatorId) === String(req.user.userId))
+            (String(report.creatorId) === String(req.user.userId) ||
+                isUserInIncidentReportEffective(access.user, report)))
 }
 
 function setPrivatePdfHeaders(res, numero, version) {

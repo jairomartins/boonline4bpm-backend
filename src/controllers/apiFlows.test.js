@@ -9,7 +9,7 @@ const bcrypt = require('bcryptjs')
 
 process.env.SECRET_PASSWORD_TOKEN = 'test-secret-for-api-flows'
 
-const userState = { user: null, created: null }
+const userState = { user: null, created: null, confirmationToken: null }
 const reportState = {
     existing: null,
     created: null,
@@ -19,6 +19,7 @@ const reportState = {
     neighborhoods: [],
     distinctCalls: [],
     aggregateResult: [],
+    profileAggregateResult: [],
     aggregatePipeline: null,
     lastFindQuery: null,
     lastUpdate: null
@@ -56,7 +57,22 @@ const User = {
         userState.created = { _id: 'new-user-record', ...user }
         return userState.created
     },
-    updateOne: async () => ({ acknowledged: true })
+    updateOne: async (query, update) => {
+        if (userState.created && update.$set?.emailConfirmationTokenHash) {
+            userState.created.emailConfirmationTokenHash = update.$set.emailConfirmationTokenHash
+        }
+        return { acknowledged: true }
+    },
+    findOneAndUpdate: async (query, update) => {
+        if (!userState.created ||
+            String(userState.created._id) !== String(query._id) ||
+            userState.created.emailConfirmationTokenHash !== query.emailConfirmationTokenHash) {
+            return null
+        }
+        Object.assign(userState.created, update.$set || {})
+        Object.keys(update.$unset || {}).forEach(field => delete userState.created[field])
+        return userState.created
+    }
 }
 
 const IncidentReport = {
@@ -117,7 +133,15 @@ const IncidentReport = {
     aggregate: pipeline => {
         reportState.aggregatePipeline = pipeline
         return {
-            allowDiskUse: async () => reportState.aggregateResult
+            allowDiskUse: async () => reportState.profileAggregateResult.length
+                ? reportState.profileAggregateResult
+                : reportState.aggregateResult,
+            then(resolve, reject) {
+                const result = reportState.profileAggregateResult.length
+                    ? reportState.profileAggregateResult
+                    : reportState.aggregateResult
+                return Promise.resolve(result).then(resolve, reject)
+            }
         }
     },
     findOne: () => ({
@@ -204,7 +228,7 @@ mockModule('../model/natureza', Natureza)
 mockModule('../model/boletimDocumento', BoletimDocumento)
 mockModule('../model/boletimDocumentoAcesso', BoletimDocumentoAcesso)
 mockModule('../lib/nodemailerconfig', {
-    sendMailConfirm: async () => {},
+    sendMailConfirm: async (_email, token) => { userState.confirmationToken = token },
     sendMailRecoverPassword: async () => {}
 })
 const realQRCode = require('qrcode')
@@ -218,12 +242,14 @@ mockModule(require.resolve('qrcode'), {
 })
 
 const { gerarToken } = require('../lib/jwtconfig')
+const { gerarTokenConfirmacao } = require('../lib/jwtconfig')
 const crypto = require('node:crypto')
 process.env.PUBLIC_VALIDATION_BASE_URL = 'https://validacao.example.test'
 const app = express()
 app.use(express.json())
 require('../http/authRouter')(app)
 require('../http/incidentReportRoute')(app)
+require('../http/userRoute')(app)
 
 let server
 let baseUrl
@@ -237,6 +263,8 @@ async function ensureServer() {
 }
 
 test.beforeEach(() => {
+    userState.created = null
+    userState.confirmationToken = null
     userState.user = {
         _id: 'user-record-1',
         userName: 'Policial Teste',
@@ -253,6 +281,7 @@ test.beforeEach(() => {
     reportState.neighborhoods = []
     reportState.distinctCalls = []
     reportState.aggregateResult = []
+    reportState.profileAggregateResult = []
     reportState.aggregatePipeline = null
     reportState.lastFindQuery = null
     reportState.lastUpdate = null
@@ -261,6 +290,157 @@ test.beforeEach(() => {
     documentState.validationUrl = null
     documentState.qrBuffer = null
     documentState.mutateRevisionOnCreate = false
+})
+
+test('lista boletins paginados somente do efetivo autenticado com filtros combinados', async () => {
+    reportState.profileAggregateResult = [{
+        reports: Array.from({ length: 11 }, (_, index) => ({ _id: `report-${index}` })),
+        metadata: [{ total: 14 }]
+    }]
+    const response = await request(
+        '/user/me/incident-reports?page=1&limit=10&numero=BO-2026&dataInicio=2026-10-01&dataFim=2026-10-31&municipio=S%C3%A3o%20Lu%C3%ADs&natureza=Roubo&bairro=Centro&userId=outro-usuario',
+        { token: tokenFor() }
+    )
+
+    assert.equal(response.status, 200)
+    assert.equal(response.body.reports.length, 10)
+    assert.equal(response.body.hasMore, true)
+    assert.equal(response.body.total, 14)
+    const pipeline = reportState.aggregatePipeline
+    const match = pipeline[0].$match
+    assert.deepEqual(match.$and[0].$or, [
+        { 'efetivo.id': '12345' },
+        { 'efetivo.numeroBarra': '12345' }
+    ])
+    assert.equal(match.$and.some(condition => Object.hasOwn(condition, 'creatorId')), false)
+    assert.deepEqual(match.$and[1].numero, { $regex: 'BO-2026', $options: 'i' })
+    assert.deepEqual(match.$and[2].municipio, { $regex: 'São Luís', $options: 'i' })
+    assert.deepEqual(match.$and[3].natureza, { $regex: 'Roubo', $options: 'i' })
+    assert.deepEqual(match.$and[4].bairro, { $regex: 'Centro', $options: 'i' })
+    assert.deepEqual(pipeline.find(stage => stage.$facet).$facet.reports.slice(0, 2), [
+        { $skip: 0 },
+        { $limit: 11 }
+    ])
+    assert.deepEqual(pipeline.find(stage => stage.$facet).$facet.metadata, [{ $count: 'total' }])
+
+    reportState.profileAggregateResult = [{
+        reports: [{ _id: 'report-11' }, { _id: 'report-12' }],
+        metadata: [{ total: 14 }]
+    }]
+    const nextPage = await request('/user/me/incident-reports?page=2&limit=10', {
+        token: tokenFor()
+    })
+    assert.equal(nextPage.status, 200)
+    assert.equal(nextPage.body.page, 2)
+    assert.equal(nextPage.body.hasMore, false)
+    assert.equal(reportState.aggregatePipeline.find(stage => stage.$facet).$facet.reports[0].$skip, 10)
+})
+
+test('valida datas e limita a paginação dos boletins do efetivo a dez', async () => {
+    for (const query of [
+        '?dataInicio=2026-02-30',
+        '?dataInicio=2026-11-01&dataFim=2026-10-31',
+        '?limit=11'
+    ]) {
+        const response = await request(`/user/me/incident-reports${query}`, { token: tokenFor() })
+        assert.equal(response.status, 400)
+    }
+
+    const withoutAuthentication = await request('/user/me/incident-reports')
+    assert.equal(withoutAuthentication.status, 401)
+})
+
+test('estatísticas combina múltiplas naturezas com período e município usando OU', async () => {
+    reportState.aggregateResult = [{
+        reports: [{ _id: 'report-match' }],
+        total: [{ value: 1 }],
+        natures: [{ naturezaId: naturezaIds[0], natureza: 'Roubo', total: 1 }],
+        monthly: [{ mes: '2026-10', ocorrencias: 1 }],
+        involved: [{ total: 2 }],
+        conducoes: []
+    }]
+    const response = await request(
+        `/incidentReport/statistics?from=2026-10-01&to=2026-10-27&municipality=${encodeURIComponent('São Luís')}&natureIds=${naturezaIds[0]},${naturezaIds[1]},pendente,${naturezaIds[0]}`,
+        { token: tokenFor('admin-record', 'admin') }
+    )
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(response.body.filters.natureIds, [naturezaIds[0], naturezaIds[1], 'pendente'])
+    assert.equal(response.body.filters.natureId, '')
+    assert.equal(response.body.total, 1)
+    const pipeline = reportState.aggregatePipeline
+    const prefilter = pipeline.find(stage => stage.$match).$match
+    assert.deepEqual(prefilter.$and[0].$or[0].dataOcorrencia, {
+        $gte: new Date('2026-10-01T00:00:00.000Z'),
+        $lte: new Date('2026-10-27T23:59:59.999Z')
+    })
+    assert.deepEqual(prefilter.$and[0].$or[1], { dataOcorrencia: { $exists: false } })
+    const dateMatch = pipeline.find(stage => stage.$match?._parsedIncidentDate).$match
+    assert.deepEqual(dateMatch._parsedIncidentDate, {
+        $gte: new Date('2026-10-01T00:00:00.000Z'),
+        $lte: new Date('2026-10-27T23:59:59.999Z')
+    })
+    const match = prefilter
+    assert.equal(match.municipio, 'São Luís')
+    assert.equal(match.$or.length, 3)
+    assert.deepEqual(match.$or.slice(0, 2).map(condition => Object.keys(condition)[0]), [
+        'naturezaIds', 'naturezaId'
+    ])
+    assert.deepEqual(
+        match.$or[0].naturezaIds.$in.map(String),
+        naturezaIds
+    )
+    assert.deepEqual(match.$or[1].naturezaId.$in.map(String), naturezaIds)
+    assert.deepEqual(match.$or[2], {
+        naturezaId: null,
+        $or: [
+            { naturezaIds: { $exists: false } },
+            { naturezaIds: { $size: 0 } }
+        ]
+    })
+    const facet = pipeline.find(stage => stage.$facet).$facet
+    assert.equal(facet.total[0].$count, 'value')
+    assert.equal(facet.monthly[0].$group._id.$dateToString.date, '$_parsedIncidentDate')
+
+    const invalid = await request(
+        `/incidentReport/statistics?from=2026-10-01&to=2026-10-27&natureIds=${naturezaIds[0]},invalid`,
+        { token: tokenFor('admin-record', 'admin') }
+    )
+    assert.equal(invalid.status, 400)
+})
+
+test('permite visualizar boletim do efetivo e oculta boletim de outro usuário', async () => {
+    const reportId = '64b000000000000000000025'
+    reportState.existing = {
+        _id: reportId,
+        creatorId: 'another-user',
+        efetivo: [{ id: '12345' }],
+        numero: 'BO-2026-025',
+        data: '27/10/2026',
+        municipio: 'São Luís',
+        envolvidos: [],
+        materiaisApreendidos: [],
+        historicohtml: ''
+    }
+    const participant = await request(`/incidentReport/${reportId}`, { token: tokenFor() })
+    assert.equal(participant.status, 200)
+
+    const printed = await request(`/incidentReport/${reportId}/documents`, {
+        method: 'POST',
+        token: tokenFor(),
+        body: {}
+    })
+    assert.equal(printed.status, 201)
+
+    reportState.existing.efetivo = [{ id: '99999' }]
+    const otherUser = await request(`/incidentReport/${reportId}`, { token: tokenFor() })
+    assert.equal(otherUser.status, 404)
+    const otherUserPrint = await request(`/incidentReport/${reportId}/documents`, {
+        method: 'POST',
+        token: tokenFor(),
+        body: {}
+    })
+    assert.equal(otherUserPrint.status, 404)
 })
 
 function tokenFor(userId = 'user-record-1', userTipo = 'comum') {
@@ -356,7 +536,24 @@ test('registra novas contas com role básica e tipo legado comum, ignorando role
     assert.equal(response.status, 201)
     assert.equal(userState.created.roleKey, 'basico')
     assert.equal(userState.created.tipo, 'comum')
-    assert.equal(userState.created.isAtivo, true)
+    assert.equal(userState.created.isAtivo, false)
+    assert.equal(userState.created.accessPending, true)
+    assert.match(response.body.message, /administrador liberará/i)
+    assert.ok(userState.confirmationToken)
+
+    const confirmation = await request(`/auth/confirm/${userState.confirmationToken}`)
+    assert.equal(confirmation.status, 200)
+    assert.match(confirmation.body, /aguarda.*liberação de um administrador/i)
+    assert.equal(userState.created.isAtivo, false)
+    assert.equal(userState.created.emailConfirmationTokenHash, undefined)
+
+    userState.user = userState.created
+    const login = await request('/auth/login', {
+        method: 'POST',
+        body: { userEmail: 'novo@example.test', userPassword: 'senha-segura' }
+    })
+    assert.equal(login.status, 403)
+    assert.match(login.body.message, /aguarda liberação/i)
 })
 
 test('cria boletim vinculado ao usuário autenticado e atualiza os dados do próprio boletim', async () => {
@@ -369,6 +566,7 @@ test('cria boletim vinculado ao usuário autenticado e atualiza os dados do pró
     assert.equal(created.status, 201)
     assert.equal(reportState.created.creatorId, 'user-record-1')
     assert.equal(reportState.created.natureza, 'Roubo')
+    assert.equal(reportState.created.dataOcorrencia.toISOString(), '2026-10-27T00:00:00.000Z')
 
     reportState.existing = {
         _id: '64b000000000000000000010',
@@ -394,6 +592,7 @@ test('cria boletim vinculado ao usuário autenticado e atualiza os dados do pró
     assert.equal(updated.status, 200)
     assert.equal(reportState.lastUpdate.data.$set.creatorId, undefined)
     assert.equal(reportState.lastUpdate.data.$set.endereco, 'Rua de teste')
+    assert.equal(reportState.lastUpdate.data.$set.dataOcorrencia.toISOString(), '2026-10-27T00:00:00.000Z')
     assert.equal(reportState.lastUpdate.data.$inc.documentRevision, 1)
 })
 
@@ -622,7 +821,9 @@ test('mapa geográfico é protegido por perfil administrativo e omite dados pess
     assert.equal(mapMatch.municipio, 'São Luís')
     assert.equal(mapMatch.bairro, 'Centro')
     assert.deepEqual(
-        mapMatch.$or.map(condition => String(condition.naturezaIds || condition.naturezaId)),
+        mapMatch.$or.map(condition => String(
+            condition.naturezaIds?.$in?.[0] || condition.naturezaId?.$in?.[0]
+        )),
         [naturezaIds[0], naturezaIds[0]]
     )
     const pointProjection = reportState.aggregatePipeline
@@ -659,6 +860,56 @@ test('mapa geográfico é protegido por perfil administrativo e omite dados pess
         stage.$addFields && stage.$addFields._mapCoordinateStatus
     ).$addFields._mapCoordinateStatus.$switch
     assert.deepEqual(coordinateStatus.branches.map(branch => branch.then), ['missing', 'valid'])
+})
+
+test('mapa geográfico combina naturezas selecionadas, pendentes e filtros de município e período', async () => {
+    reportState.aggregateResult = [{
+        summary: [{ totalReports: 4, validCoordinates: 2, missingCoordinates: 1, invalidCoordinates: 1 }],
+        heat: [],
+        points: [],
+        pointCount: [],
+        records: [],
+        recordCount: [],
+        neighborhoods: [],
+        neighborhoodCount: [],
+        timeline: [],
+        natures: []
+    }]
+    const response = await request(
+        `/incidentReport/statistics/geographic?from=2026-10-01&to=2026-10-27&municipality=${encodeURIComponent('São Luís')}&bairro=Centro&natureIds=${naturezaIds[0]},${naturezaIds[1]},pendente,${naturezaIds[0]}`,
+        { token: tokenFor('admin-record', 'admin') }
+    )
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(response.body.filters.natureIds, [naturezaIds[0], naturezaIds[1], 'pendente'])
+    assert.equal(response.body.filters.natureId, '')
+    const pipeline = reportState.aggregatePipeline
+    const match = pipeline[0].$match
+    assert.equal(match.municipio, 'São Luís')
+    assert.equal(match.bairro, 'Centro')
+    assert.equal(match.$or.length, 3)
+    assert.deepEqual(match.$or[0].naturezaIds.$in.map(String), naturezaIds)
+    assert.deepEqual(match.$or[1].naturezaId.$in.map(String), naturezaIds)
+    assert.deepEqual(match.$or[2], {
+        naturezaId: null,
+        $or: [
+            { naturezaIds: { $exists: false } },
+            { naturezaIds: { $size: 0 } }
+        ]
+    })
+    const natureFacet = pipeline.find(stage => stage.$facet).$facet.natures
+    const selectedNatureMatch = natureFacet.find(stage =>
+        stage.$match && stage.$match._mapNatureIds
+    )
+    assert.deepEqual(selectedNatureMatch.$match._mapNatureIds.$in.map(value =>
+        value === null ? null : String(value)
+    ), [...naturezaIds, null])
+
+    const invalid = await request(
+        `/incidentReport/statistics/geographic?from=2026-10-01&to=2026-10-27&municipality=Balsas&natureIds=${naturezaIds[0]},invalid`,
+        { token: tokenFor('admin-record', 'admin') }
+    )
+    assert.equal(invalid.status, 400)
 })
 
 test('mapa valida município, intervalo, tipo de data e limites da paginação', async () => {
