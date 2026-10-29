@@ -1,159 +1,130 @@
+# BO Online — API Backend
 
-## 📌 boonline4bpm-backend  
+API do sistema **BO Online do 4º BPM / PMMA**. O serviço implementa autenticação, regras de acesso, operações de boletins, estatísticas, emissão e validação de documentos. A persistência é feita em MongoDB por meio do Mongoose.
 
-**boonline4bpm-backend** é uma API em Node.js/Express para o sistema **boonline4bpm**, com persistência em MongoDB.
+Frontend correspondente: [boonline4bpm](https://github.com/jairomartins/boonline4bpm).
 
----
+## Visão geral
 
-### 📚 **Descrição de Funções**:
-- **Boletins de Ocorrência**: O sistema permite consultar, cadastrar, editar e excluir boletins de ocorrência com base em parâmetros como número, município, data e natureza do evento.
-- **Naturezas de Ocorrências**: O sistema permite visualizar e fazer o ranking das naturezas dos boletins de ocorrência, tanto por ano quanto por mês.
-- **Efetivo Policial**: As rotas permitem a consulta de boletins de ocorrência associados aos policiais, facilitando o acompanhamento das ocorrências por agente.
-
-
-## 📂 Estrutura do Projeto  
-
-A estrutura principal do projeto:
-
-```
-boonline4bpm-backend/
-├── src/
-│   ├── controllers/      # Controladores que logica de negocio
-│   ├── model/            # Modelos Mongoose
-│   ├── http/             # Definição das rotas da aplicação, requisicoes http
-│   ├── database/         # Conexão com o banco de dados
-│   ├── utils/            # Funções utilitárias e helpers
-|   ├── lib/              # Bibliotecas
-│   └── index.js          # Ponto de entrada da aplicação
-├── .gitignore            # Arquivos e diretórios ignorados pelo Git
-├── package.json          # Dependências e scripts do projeto
-└── README.md             # Documentação do projeto
+```mermaid
+flowchart LR
+    F[Frontend React] -->|REST API e JWT| A[Express]
+    A --> C[Controllers e regras de acesso]
+    C --> M[(MongoDB)]
+    A --> D[PDF e QR Code]
+    V[Validação do QR Code] --> A
 ```
 
----
+### Recursos principais
 
-## 🛠 Tecnologias Utilizadas  
+- Login, cadastro, confirmação de e-mail, recuperação de senha e autenticação por JWT.
+- Cadastro, consulta e atualização de boletins, com envolvidos, natureza, materiais, efetivo e histórico.
+- Perfis e permissões configuráveis, validados no servidor a cada requisição protegida.
+- Catálogo oficial de naturezas e associação com registros antigos.
+- Estatísticas e consultas geográficas para o mapa.
+- Emissão de cópia digital em PDF com QR Code, histórico de versões e validação pública limitada.
+- Revisão de texto opcional por integração com OpenAI.
+- Documentação HTTP interativa em `/docs`.
 
-- **Node.js**  
-- **PostgreSQL / MongoDB** *(dependendo da configuração do banco)*  
-- **JWT para autenticação**  
+## Tecnologias
 
----
+Node.js, Express, MongoDB, Mongoose, JWT, Nodemailer, PDFKit, QRCode e OpenAI SDK.
 
-## 🚀 Instalação  
+## Banco de dados e preservação dos dados
 
-1. **Clone o repositório:**  
+A conexão atual está definida em `src/database/db.js`:
+
+```text
+mongodb://127.0.0.1:27017/boonline
+```
+
+Isso significa que a aplicação usa o banco MongoDB chamado `boonline` no próprio servidor. A conexão ainda não é lida de uma variável `MONGODB_URI`. Um banco separado chamado `boletims`, por exemplo, não é selecionado automaticamente por esta configuração.
+
+Antes de conectar uma nova instalação a um MongoDB existente, confirme o endereço e o nome do banco e mantenha um backup restaurável. Não execute comandos de remoção de banco/coleções nem restaure um dump sobre dados existentes sem conferir o destino. Os scripts de migração não são executados automaticamente ao iniciar a API.
+
+## Executar localmente
+
+Pré-requisitos: Node.js, npm e um MongoDB acessível em `127.0.0.1:27017`.
+
+1. Instale as dependências na raiz:
+
    ```bash
-   git clone https://github.com/jairomartins/boonline4bpm-backend.git
-   cd booline4bpm-backend
+   npm ci
    ```
 
-2. **Instale as dependências:**  
-   ```bash
-   npm install
-   ```
-
-3. **Configure as variáveis de ambiente (opcional conforme o recurso usado):**
-
-   Crie um arquivo `.env` na raiz do projeto:
+2. Crie um arquivo `.env` na raiz. Exemplo para desenvolvimento:
 
    ```env
    PORT=3000
    BASE_URL=localhost
-   SECRET_PASSWORD_TOKEN=uma_chave_longa_e_aleatoria
-   PUBLIC_VALIDATION_BASE_URL=https://bo.seudominio.gov.br
-   EMAIL_USER=seu_email
-   EMAIL_PASSWORD=sua_senha_de_app
-   OPENAI_API_KEY=sua_chave_da_openai
+   USE_HTTPS=false
+   SECRET_PASSWORD_TOKEN=gere-uma-chave-longa-e-aleatoria
+   PUBLIC_VALIDATION_BASE_URL=http://localhost:3000
+   EMAIL_USER=
+   EMAIL_PASSWORD=
+   OPENAI_API_KEY=
    ```
 
-   O MongoDB deve estar disponível em `mongodb://127.0.0.1:27017/boonline` (configuração atual em `src/database/db.js`). Em desenvolvimento, a URL de validação usa `http://localhost:3000` por padrão; opcionalmente, configure `PUBLIC_VALIDATION_BASE_URL`. Em produção, configure essa variável com a origem HTTPS pública do frontend; localhost e endereços IP são recusados. E-mail e OpenAI são necessários apenas para os recursos correspondentes.
+   `SECRET_PASSWORD_TOKEN` deve ser uma chave privada, longa e exclusiva. E-mail e OpenAI são usados apenas pelos recursos correspondentes. O envio de e-mail está configurado no código para SMTP do Gmail na porta 587. Não envie o arquivo `.env` ao Git.
 
-4. **Inicie o servidor:**
+3. Inicie a API:
+
    ```bash
    npm run dev
    ```
 
-Para iniciar sem reinicialização automática, use `npm start`. A API fica disponível em `http://localhost:3000`.
-A documentação HTML da API fica disponível em `http://localhost:3000/docs`.
+   Para iniciar sem reinicialização automática, use `npm start`. Com a configuração padrão, a API responde em `http://localhost:3000`; verifique `/` para a resposta de disponibilidade e `/docs` para a documentação HTTP.
 
----
+## Endpoints principais
 
-## 📡 Rotas da API  
+As rotas de autenticação estão disponíveis sob `/auth` e também mantêm os caminhos legados sem esse prefixo. Rotas protegidas recebem o JWT no cabeçalho `x-access-token`.
 
-As rotas de autenticação também aceitam os caminhos legados sem o prefixo `/auth`.
-
-### 🔐 **Autenticação**  
-| Método | Rota | Descrição |
+| Grupo | Rotas de referência | Acesso |
 |---|---|---|
-| `POST` | `/auth/login` | Autentica e retorna um token JWT |
-| `POST` | `/auth/register` | Registra um usuário |
-| `GET` | `/auth/confirm/:token` | Confirma o e-mail usando o link enviado no cadastro |
-| `POST` | `/auth/recuperarSenha` | Solicita link de recuperação por e-mail |
-| `GET` | `/auth/passwordrecover/:token` | Exibe formulário para redefinir senha |
-| `POST` | `/auth/passwordrecover/:token` | Redefine senha com token temporário de uso único |
-| `GET` | `/auth/isUserAuth` | Valida o token enviado no cabeçalho `x-access-token` |
+| Autenticação | `POST /auth/login`, `POST /auth/register`, `GET /auth/confirm/:token`, `POST /auth/recuperarSenha`, `POST /auth/passwordrecover/:token`, `GET /auth/session` | Algumas operações são públicas; sessão requer token |
+| Usuários | `/user`, `/user/me`, `/user/:id` | Login e permissões conforme a operação |
+| Perfis e permissões | `/access/me`, `/access/roles`, `/access/users/:id/role`, `/access/users/:id/status` | Requer permissões administrativas |
+| Boletins | `/incidentReport/search`, `/incidentReport/create`, `/incidentReport/:id`, `/incidentReport/remove/:id` | Requer login e permissões |
+| Estatísticas e mapa | `GET /incidentReport/statistics`, `GET /incidentReport/statistics/geographic/options`, `GET /incidentReport/statistics/geographic` | Requer permissões de estatística/mapa |
+| Naturezas | `/naturezas`, `/naturezas/:id`, `/naturezas/:id/status` | Consulta requer login; alterações exigem permissão |
+| PDF e validação por QR | `POST /incidentReport/:id/documents`, `GET /incidentReport/documents/validation/:token` | Emissão autenticada; validação básica pública e limitada |
+| Revisão de texto | `POST /api/verify-text` | Requer `OPENAI_API_KEY` configurada |
 
-Não há endpoint de logout: os tokens são JWT stateless; o cliente deve descartar o token.
+A API documenta os parâmetros e os demais endpoints em `/docs`. A consulta pública do QR Code confirma o estado do documento, sem liberar o conteúdo integral do boletim. PDF e detalhes completos exigem autenticação e autorização.
 
-### 👥 **Usuários**  
-Todas as rotas de usuários exigem o cabeçalho `x-access-token`.
+## Scripts
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `POST` | `/user` | Cadastra usuário |
-| `GET` | `/user` | Lista usuários |
-| `GET` | `/user/:matricula` | Busca usuário pela matrícula |
-| `PUT` | `/user/:id` | Atualiza dados permitidos pelo ID MongoDB |
-| `DELETE` | `/user/:id` | Remove pelo ID MongoDB |
+| Comando | Comportamento |
+|---|---|
+| `npm run dev` | Inicia com Nodemon |
+| `npm start` | Inicia a API |
+| `npm test` | Executa os testes automatizados com `node --test` |
+| `npm run migrate:roles` | Cria/atualiza os perfis iniciais e associa usuários; altera o banco |
+| `npm run migrate:naturezas` | Simula por padrão a associação de naturezas legadas; use `-- --apply` para gravar |
+| `npm run seed:naturezas` | Simula por padrão a inclusão das naturezas ausentes; use `-- --apply` para gravar |
+| `npm run migrate:incident-dates` | Faz uma leitura de conferência por padrão; para gravar exige `-- --apply` e `CONFIRM_INCIDENT_DATE_BACKFILL=yes` |
 
----
+Revise o código e o relatório dos scripts antes de aplicá-los a dados existentes. Faça backup recente e confirme que a configuração aponta para o banco correto. Mesmo a simulação de datas acessa e lê o MongoDB, embora não grave alterações.
 
-### Roles e permissões
+## Considerações para produção
 
-As permissões efetivas vêm da role ativa armazenada no MongoDB e são revalidadas no backend em cada requisição. Os endpoints administrativos são `GET/POST /access/roles`, `PUT /access/roles/:id`, `PATCH /access/users/:id/role`, `PATCH /access/users/:id/status` e `GET /access/me`; cada endpoint exige sua permissão específica. O catálogo de permissões e os recursos estão em `src/utils/permissionCatalog.js`.
+- O servidor usa `cors()` sem lista de origens neste momento; restrinja o CORS aos domínios do frontend antes de expor a API publicamente.
+- Quando `USE_HTTPS=true`, o código lê certificados de um caminho Let's Encrypt fixo em `src/index.js`. Para TLS terminado em proxy reverso, mantenha a API atrás do proxy e revise o comportamento de geração de links de e-mail e de validação.
+- O limitador da validação pública do QR Code mantém contadores em memória. Se operar com várias instâncias, será necessário compartilhar esse estado.
+- Restrinja o acesso de rede ao MongoDB; o frontend não deve conectar diretamente à porta do banco.
+- Use HTTPS público para o frontend e para os links de validação dos documentos. Mantenha segredos e arquivos de certificado fora do repositório.
 
-Para criar as roles iniciais e mapear perfis legados, revise a conexão MongoDB e execute `npm run migrate:roles`. A migração é idempotente e não remove o campo legado `tipo`: contas com `tipo=admin` são associadas a `Administrador`; os demais perfis, inclusive `COPOM` e `P3`, são associados a `Básico`. As roles COPOM, P3 e Comandante começam sem permissões sensíveis e devem ser configuradas conforme aprovação institucional. O script exige ao menos uma conta administrativa ativa e não foi executado como parte desta alteração.
+## Estrutura do código
 
-### 📂 **Boletim de Ocorrência (BO)**
+- `src/index.js`: inicialização do Express e seleção HTTP/HTTPS.
+- `src/http/`: definição das rotas.
+- `src/controllers/`: fluxos e regras da API.
+- `src/model/`: schemas Mongoose.
+- `src/database/`: conexão com MongoDB.
+- `src/utils/` e `src/lib/`: permissões, validações e integrações.
+- `src/scripts/`: migrações e carga de catálogos.
+- `src/assets/`: imagens usadas em documentos.
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/incidentReport` | Lista boletins |
-| `GET` | `/incidentReport/domestic` | Busca boletins de violência doméstica |
-| `GET` | `/incidentReport/date/:day/:month/:year` | Busca por data |
-| `GET` | `/incidentReport/city/:city/:number` | Busca por município e número |
-| `GET` | `/incidentReport/number/:number` | Busca por número |
-| `GET` | `/incidentReport/:incidentReportId` | Busca pelo ID MongoDB |
-| `POST` | `/incidentReport/create` | Cria ou atualiza; exige token |
-| `DELETE` | `/incidentReport/remove/:id` | Exclui; exige token |
+## Licença
 
-Os formatos antigos de busca por data e por município/número continuam disponíveis por compatibilidade.
-
-### Cópias digitais e validação por QR Code
-
-| Método | Rota | Acesso |
-|---|---|---|
-| `POST` | `/incidentReport/:id/documents` | Usuário autenticado autorizado; emite o PDF final com o mesmo conteúdo da impressão do sistema e QR Code ao final |
-| `GET` | `/incidentReport/documents/validation/:token` | Público, limitado a 30 consultas por minuto por IP; retorna apenas estado, versão e emissão |
-| `GET` | `/incidentReport/documents/validation/:token/details` | Autenticado; autor ou administrador; retorna o número e os detalhes da versão |
-| `GET` | `/incidentReport/documents/validation/:token/pdf` | Autenticado; somente autor do boletim ou administrador |
-| `POST` | `/incidentReport/documents/validation/:token/revoke` | Autenticado; somente autor do boletim ou administrador |
-
-O PDF é armazenado como versão imutável na coleção `BoletimDocumento`, junto ao hash SHA-256, hash do token, número da versão, revisão do boletim e metadados mínimos de emissão. O token aleatório não contém dados pessoais. A consulta pública confirma a integridade e o estado, sem revelar o número do boletim nem entregar a cópia integral. Edições incrementam `documentRevision` e substituem as versões anteriores; `currentDocumentVersion` identifica a versão emitida mais recente. Número e cópia só são liberados a uma conta autorizada. Emissões e alterações de estado ficam associadas à versão, e downloads autorizados geram registros mínimos na coleção `BoletimDocumentoAcesso`, sem armazenar conteúdo ou IP. O limitador de consultas públicas usa memória do processo; ambientes com múltiplas instâncias devem configurar um armazenamento compartilhado. Exclusões, status de cancelamento institucional e assinatura digital qualificada ainda não existem no modelo atual e não são declarados pelo PDF.
-
-O botão único **Imprimir** emite o PDF a partir dos dados persistidos e abre a cópia final, com o QR Code ao final; a mesma versão armazenada é oferecida na validação online apenas a usuários autorizados. Os logotipos do cabeçalho são os mesmos arquivos já utilizados pela impressão do frontend. O QR Code não libera publicamente os dados integrais do boletim.
-O host do frontend deve encaminhar `/validar-boletim/*` para o `index.html` da SPA. Em produção, o domínio configurado em `PUBLIC_VALIDATION_BASE_URL` deve ser servido por HTTPS.
-
-### Revisão de texto
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `POST` | `/api/verify-text` | Recebe `{ "text": "..." }` e solicita revisão de texto |
----
-
-## 📜 Licença  
-
-Este projeto está licenciado sob a **MIT License**.  
-
----
+O pacote backend declara a licença MIT em seu `package.json`.
