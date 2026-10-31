@@ -1,4 +1,6 @@
 require('dotenv').config()
+const { requireExplicitMongo } = require('./maintenanceDb')
+requireExplicitMongo()
 const mongoose = require('mongoose')
 const db = require('../database/db')
 const Boletim = require('../model/boletim')

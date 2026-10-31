@@ -2,6 +2,7 @@ const express = require('express')
 const { rateLimit } = require('express-rate-limit')
 const incidentReportController = require('../controllers/incidentReportController')
 const boletimDocumentoController = require('../controllers/boletimDocumentoController')
+const operationalStatisticsController = require('../controllers/operationalStatisticsController')
 
 const { verificaToken } = require('../lib/jwtconfig')
 const { requirePermission, requireAnyPermission } = require('../utils/authorization')
@@ -22,6 +23,13 @@ function incidentReportRoute (app){
         handler: (_req, res) => res.status(429).json({
             message: 'Limite de consultas atingido. Tente novamente mais tarde.'
         })
+    })
+    const operationalStatisticsLimit = rateLimit({
+        windowMs: 60 * 1000,
+        limit: 60,
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { message: 'Muitas consultas de estatísticas. Aguarde antes de tentar novamente.' }
     })
 
     router.get('/documents/validation/:token', publicValidationLimit, async (req, res) => {
@@ -70,6 +78,10 @@ function incidentReportRoute (app){
 
     router.get('/statistics', verificaToken, exigeIdentidade, requirePermission('statistics.view'), async (req, res) => {
         await incidentReportController.incidentReportStatistics(req, res)
+    })
+
+    router.get('/statistics/operational', verificaToken, exigeIdentidade, requirePermission('statistics.view'), operationalStatisticsLimit, async (req, res) => {
+        await operationalStatisticsController.operationalStatistics(req, res)
     })
 
     router.get('/statistics/geographic/options', verificaToken, exigeIdentidade, requirePermission('map.view'), async (req, res) => {

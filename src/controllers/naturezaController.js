@@ -11,31 +11,16 @@ function validarCampos(body, parcial = false) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
         return 'Envie os dados da natureza em um objeto.'
     }
+    const camposNaoPermitidos = Object.keys(body).filter(campo => !['nome', 'ativo'].includes(campo))
+    if (camposNaoPermitidos.length) return 'A natureza aceita somente nome e status ativo.'
     if (!parcial || Object.prototype.hasOwnProperty.call(body, 'nome')) {
         if (typeof body.nome !== 'string' || !body.nome.trim() || body.nome.trim().length > 500) {
             return 'Informe um nome oficial de até 500 caracteres.'
         }
         if (!normalizarNatureza(body.nome)) return 'Informe um nome oficial válido.'
     }
-    for (const campo of ['categoria', 'descricao']) {
-        if (Object.prototype.hasOwnProperty.call(body, campo) &&
-            (typeof body[campo] !== 'string' || body[campo].length > (campo === 'descricao' ? 1000 : 100))) {
-            return `O campo ${campo} deve ser um texto válido.`
-        }
-        if (Object.prototype.hasOwnProperty.call(body, 'ativo') && typeof body.ativo !== 'boolean') {
-            return 'O status ativo deve ser booleano.'
-        }
-    }
-    if (Object.prototype.hasOwnProperty.call(body, 'aliases')) {
-        if (!Array.isArray(body.aliases) || body.aliases.length > 30 ||
-            body.aliases.some(alias => typeof alias !== 'string' || !alias.trim() || alias.length > 120)) {
-            return 'Informe até 30 aliases válidos, com no máximo 120 caracteres cada.'
-        }
-        const normais = body.aliases.map(normalizarNatureza)
-        if (normais.some(alias => !alias) || new Set(normais).size !== normais.length ||
-            (body.nome && normais.includes(normalizarNatureza(body.nome)))) {
-            return 'Os aliases não podem se repetir nem ser iguais ao nome oficial.'
-        }
+    if (Object.prototype.hasOwnProperty.call(body, 'ativo') && typeof body.ativo !== 'boolean') {
+        return 'O status ativo deve ser booleano.'
     }
     return null
 }
@@ -136,9 +121,6 @@ exports.criar = async (req, res) => {
         }
         const natureza = await Natureza.create({
             nome: req.body.nome,
-            categoria: req.body.categoria || '',
-            descricao: req.body.descricao || '',
-            aliases: req.body.aliases || [],
             ativo: req.body.ativo === undefined ? true : req.body.ativo
         })
         return res.status(201).json(natureza)
@@ -157,7 +139,7 @@ exports.editar = async (req, res) => {
     if (Object.prototype.hasOwnProperty.call(req.body, 'ativo')) {
         return res.status(400).json({ message: 'Use o endpoint /:id/status para alterar o status.' })
     }
-    const permitidos = ['nome', 'categoria', 'descricao', 'aliases', 'ativo']
+    const permitidos = ['nome']
     const alteracoes = {}
     permitidos.forEach(campo => {
         if (Object.prototype.hasOwnProperty.call(req.body, campo)) alteracoes[campo] = req.body[campo]
@@ -175,12 +157,7 @@ exports.editar = async (req, res) => {
             }
         }
         Object.assign(natureza, alteracoes)
-        const erroCombinado = validarCampos({
-            nome: natureza.nome,
-            categoria: natureza.categoria,
-            descricao: natureza.descricao,
-            aliases: natureza.aliases
-        })
+        const erroCombinado = validarCampos({ nome: natureza.nome })
         if (erroCombinado) return res.status(400).json({ message: erroCombinado })
         await natureza.save()
         if (Object.prototype.hasOwnProperty.call(alteracoes, 'nome')) {

@@ -106,16 +106,6 @@ POST /auth/recuperarSenha
     </table>
     <p>Para importar os grupos e fatos do arquivo de referência, execute <code>npm run seed:naturezas -- --apply</code> no backend. O modo padrão é simulação; a importação preserva entradas já existentes e pode ser executada novamente sem duplicá-las.</p>
 
-    <h2>Revisão de texto</h2>
-    <table border="1">
-        <thead><tr><th>Método</th><th>Endpoint</th><th>Descrição</th><th>Autenticação</th></tr></thead>
-        <tbody>
-            <tr><td>POST</td><td>/api/verify-text</td><td>Revisa o texto enviado por meio do serviço de IA configurado.</td><td>Não</td></tr>
-        </tbody>
-    </table>
-    <pre>POST /api/verify-text
-{"text":"Texto para revisão."}</pre>
-
     <h2>Respostas e erros</h2>
     <p>As respostas de dados são JSON. Códigos comuns: 200 para sucesso, 201 para criação, 400 para entrada inválida, 401 para token inválido ou credenciais incorretas, 403 para acesso não autorizado, 404 para recurso inexistente, 409 para conflito de versão ou nome duplicado, 413 para PDF acima do limite e 500 para erro interno. Validação e emissão podem retornar 503 quando o serviço estiver indisponível; consultas públicas também podem retornar 429 ao exceder o limite.</p>
 </body>

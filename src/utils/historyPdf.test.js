@@ -1,0 +1,11 @@
+const test = require('node:test')
+const assert = require('node:assert/strict')
+const { historyParagraphs } = require('./historyPdf')
+test('PDF conserva estilos, entidades, parágrafos e numeração', () => {
+    const paragraphs = historyParagraphs('<p>Início <strong>negrito <em>ambos</em></strong><br>Fim &#231;</p><ol><li>Um</li><li>Dois</li></ol>')
+    assert.equal(paragraphs[0][1].bold, true)
+    assert.equal(paragraphs[0][2].italic, true)
+    assert.equal(paragraphs[1][0].text, 'Fim ç')
+    assert.equal(paragraphs[2].map(run => run.text).join(''), '1. Um')
+    assert.equal(paragraphs[3].map(run => run.text).join(''), '2. Dois')
+})

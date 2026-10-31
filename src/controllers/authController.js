@@ -94,6 +94,7 @@ exports.login = async(req,res)=>{
             ? await userQuery.lean()
             : await userQuery
         if (!user){
+            console.warn('Falha no login: usuário não encontrado no banco configurado.')
             return res.status(401).json({message:"E-mail ou senha inválidos.", authenticated:false})
         }
         if (user.emailConfirmationTokenHash) {
@@ -122,10 +123,11 @@ exports.login = async(req,res)=>{
                 userTipo: user.tipo
             })
         }else{
+            console.warn('Falha no login: senha inválida para usuário localizado.')
             return res.status(401).json({message:"E-mail ou senha inválidos.", authenticated:false})
         }
     }catch(err){
-        console.error("Erro ao autenticar usuário:", err)
+        console.error("Erro ao autenticar usuário:", { name: err.name, code: err.code })
         return res.status(500).json({message:"Erro interno ao autenticar usuário.",authenticated:false})
     }
 }
@@ -193,9 +195,10 @@ exports.passwordFormUpdate = async(req,res)=>{
     try {
         verificarTokenRecuperacao(req.params.token)
         const form = `
-        <form method="post" action="/auth/passwordrecover/${encodeURIComponent(req.params.token)}">
+        <!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Redefinir senha</title>
+        <form method="post" action="">
           <label for="password">Digite a nova senha:</label>
-          <input type="password" id="password" name="userPassword" required>
+          <input type="password" id="password" name="userPassword" minlength="8" autocomplete="new-password" required>
           <button type="submit">Confirmar alteração de senha</button>
         </form>
         `
@@ -222,6 +225,9 @@ exports.resetPassword = async (req, res) => {
         )
         if (!updatedUser) {
             return res.status(400).json({ message: "Link de recuperação inválido ou já utilizado." })
+        }
+        if (req.is('application/x-www-form-urlencoded')) {
+            return res.status(200).type('html').send('<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Senha atualizada</title><p>Senha alterada com sucesso.</p><a href="/">Voltar ao login</a></html>')
         }
         return res.status(200).json({ message: "Senha alterada com sucesso." })
     } catch (error) {

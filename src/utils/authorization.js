@@ -11,6 +11,7 @@ function isAdministratorUser(user) {
 
 function expandPermissions(permissions = []) {
     const effective = new Set(permissions)
+    if (effective.has('naturezas.manage')) effective.add('localidades.manage')
     if (effective.has('users.manage')) effective.add('users.view')
     if (effective.has('users.manage')) effective.add('roles.view')
     if (effective.has('roles.manage')) effective.add('roles.view')

@@ -62,7 +62,6 @@ Pré-requisitos: Node.js, npm e um MongoDB acessível em `127.0.0.1:27017`.
    PUBLIC_VALIDATION_BASE_URL=http://localhost:3000
    EMAIL_USER=
    EMAIL_PASSWORD=
-   OPENAI_API_KEY=
    ```
 
    `SECRET_PASSWORD_TOKEN` deve ser uma chave privada, longa e exclusiva. E-mail e OpenAI são usados apenas pelos recursos correspondentes. O envio de e-mail está configurado no código para SMTP do Gmail na porta 587. Não envie o arquivo `.env` ao Git.
@@ -88,7 +87,6 @@ As rotas de autenticação estão disponíveis sob `/auth` e também mantêm os 
 | Estatísticas e mapa | `GET /incidentReport/statistics`, `GET /incidentReport/statistics/geographic/options`, `GET /incidentReport/statistics/geographic` | Requer permissões de estatística/mapa |
 | Naturezas | `/naturezas`, `/naturezas/:id`, `/naturezas/:id/status` | Consulta requer login; alterações exigem permissão |
 | PDF e validação por QR | `POST /incidentReport/:id/documents`, `GET /incidentReport/documents/validation/:token` | Emissão autenticada; validação básica pública e limitada |
-| Revisão de texto | `POST /api/verify-text` | Requer `OPENAI_API_KEY` configurada |
 
 A API documenta os parâmetros e os demais endpoints em `/docs`. A consulta pública do QR Code confirma o estado do documento, sem liberar o conteúdo integral do boletim. PDF e detalhes completos exigem autenticação e autorização.
 
@@ -108,7 +106,7 @@ Revise o código e o relatório dos scripts antes de aplicá-los a dados existen
 
 ## Considerações para produção
 
-- O servidor usa `cors()` sem lista de origens neste momento; restrinja o CORS aos domínios do frontend antes de expor a API publicamente.
+- O CORS permite `http://localhost:3000` para desenvolvimento e `https://jmartins.vps-kinghost.net` como domínio de frontend de referência. `CORS_ORIGIN` pode acrescentar origens explícitas separadas por vírgula. O backend usa JWT no cabeçalho `x-access-token`, não cookies, portanto CORS não habilita credenciais de cookie.
 - Quando `USE_HTTPS=true`, o código lê certificados de um caminho Let's Encrypt fixo em `src/index.js`. Para TLS terminado em proxy reverso, mantenha a API atrás do proxy e revise o comportamento de geração de links de e-mail e de validação.
 - O limitador da validação pública do QR Code mantém contadores em memória. Se operar com várias instâncias, será necessário compartilhar esse estado.
 - Restrinja o acesso de rede ao MongoDB; o frontend não deve conectar diretamente à porta do banco.

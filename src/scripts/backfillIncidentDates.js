@@ -1,3 +1,6 @@
+require('dotenv').config()
+const { requireExplicitMongo } = require('./maintenanceDb')
+requireExplicitMongo()
 const IncidentReport = require('../model/boletim')
 const { parseIncidentDate } = require('../utils/incidentDate')
 

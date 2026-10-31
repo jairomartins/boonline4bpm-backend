@@ -12,13 +12,6 @@ const transporter = nodemailer.createTransport({
 });
 
 /**
- * Retorna o protocolo adequado (HTTP ou HTTPS) baseado na variável de ambiente.
- */
-function getProtocolo() {
-    return process.env.USE_HTTPS === 'true' ? 'https' : 'http';
-}
-
-/**
  * Função auxiliar para envio de e-mails.
  */
 async function sendMail(to, subject, htmlContent) {
@@ -48,9 +41,7 @@ exports.sendMailConfirm = async (destinatario, token) => {
     if (!destinatario || !token) {
         throw new Error("Destinatário ou token de confirmação não informado.");
     }
-    const baseUrl = process.env.BASE_URL || 'localhost';
-    const port = process.env.PORT || 3000;
-    const confirmUrl = `${getProtocolo()}://${baseUrl}:${port}/auth/confirm/${encodeURIComponent(token)}`;
+    const confirmUrl = `${getPublicAppUrl()}/auth/confirm/${encodeURIComponent(token)}`;
     
     const htmlContent = `
         <p>Parabéns por entrar no Boletim Online! Para ativar seu cadastro, clique no link abaixo:</p>
@@ -69,9 +60,7 @@ exports.sendMailRecoverPassword = async (user, token) => {
         throw new Error("Usuário inválido ou dados insuficientes para recuperação de senha.");
     }
 
-    const baseUrl = process.env.BASE_URL || 'localhost';
-    const port = process.env.PORT || 3000;
-    const recoverUrl = `${getProtocolo()}://${baseUrl}:${port}/auth/passwordrecover/${encodeURIComponent(token)}`;
+    const recoverUrl = `${getPublicAppUrl()}/auth/passwordrecover/${encodeURIComponent(token)}`;
 
     const htmlContent = `
         <p>Você solicitou a recuperação de senha do Boletim Online 4BPM:</p>
@@ -81,3 +70,5 @@ exports.sendMailRecoverPassword = async (user, token) => {
 
     return sendMail(user.userEmail, 'Recuperação de senha BOLETIM ONLINE', htmlContent);
 };
+
+function getPublicAppUrl() { return require('../utils/publicApiUrl').publicApiUrl() }

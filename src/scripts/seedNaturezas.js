@@ -4,8 +4,10 @@ const path = require('path')
 const mongoose = require('mongoose')
 const db = require('../database/db')
 const Natureza = require('../model/natureza')
-const { normalizarNatureza } = require('../utils/natureza')
-const { parseCatalogoNaturezas } = require('../utils/catalogoNaturezas')
+const { EXPECTED_COUNTS, parseCatalogoNaturezas } = require('../utils/catalogoNaturezas')
+const { planejarImportacao } = require('../utils/naturezaSeed')
+const { requireExplicitMongo } = require('./maintenanceDb')
+requireExplicitMongo()
 
 function argumentos() {
     const args = process.argv.slice(2)
@@ -18,44 +20,69 @@ function argumentos() {
         throw new Error('Use --dry-run (padrão) ou --apply, opcionalmente com --file <caminho>.')
     }
     const arquivo = fileIndex === -1
-        ? path.resolve(__dirname, '../../../naturezas_ocorrencias_PMMA.txt')
+        ? path.resolve(__dirname, '../../../naturezas_ocorrencias_PMMA_atualizado.txt')
         : path.resolve(process.cwd(), args[fileIndex + 1])
     return { apply, arquivo }
 }
 
 async function importar() {
     const { apply, arquivo } = argumentos()
-    const itens = parseCatalogoNaturezas(fs.readFileSync(arquivo, 'utf8'))
+    console.log(`Operação: ${apply ? 'aplicar seed idempotente' : 'simular seed'}; coleção: naturezas; fonte: ${arquivo}`)
+    const texto = fs.readFileSync(arquivo, 'utf8')
+    const itens = parseCatalogoNaturezas(texto)
+    const catalogoBruto = Object.values(EXPECTED_COUNTS).reduce((sum, count) => sum + count, 0)
     await db.connection.asPromise()
-    await Natureza.init()
 
-    const catalogoExistente = await Natureza.find().select('nome normalizado').lean()
-    const nomesExistentes = new Set(catalogoExistente.map(item =>
-        normalizarNatureza(item.nome || item.normalizado)
-    ))
-    const resultados = { modo: apply ? 'aplicacao' : 'simulacao', fonte: arquivo, catalogo: itens.length, inseridas: 0, existentes: 0 }
-    for (const item of itens) {
-        const normalizado = normalizarNatureza(item.nome)
-        if (nomesExistentes.has(normalizado)) {
-            resultados.existentes += 1
-            continue
+    let indices = []
+    try {
+        indices = await Natureza.collection.indexes()
+    } catch (error) {
+        if (error.codeName !== 'NamespaceNotFound') throw error
+    }
+    const hasUniqueNameIndex = indices.some(index => index.unique && index.key.normalizado === 1)
+    if (apply && !hasUniqueNameIndex) {
+        const duplicates = await Natureza.collection.aggregate([
+            { $group: { _id: '$normalizado', quantidade: { $sum: 1 } } },
+            { $match: { quantidade: { $gt: 1 } } },
+            { $limit: 10 }
+        ]).toArray()
+        if (duplicates.length) {
+            throw new Error(`Seed interrompido: existem nomes normalizados duplicados (${duplicates.map(item => item._id).join(', ')}). Revise os dados; nenhuma exclusao foi feita.`)
         }
-        resultados.inseridas += 1
-        if (apply) {
+        await Natureza.collection.createIndex({ normalizado: 1 }, { unique: true, name: 'normalizado_1' })
+    }
+
+    const existentes = await Natureza.find().select('_id nome normalizado ativo').lean()
+    const plano = planejarImportacao(itens, existentes)
+    const relatorio = {
+        modo: apply ? 'aplicacao' : 'simulacao',
+        fonte: arquivo,
+        codigosOrigemValidados: EXPECTED_COUNTS,
+        descricoesUnicasNoTxt: itens.length,
+        descricoesRepetidasNoTxt: catalogoBruto - itens.length,
+        descricoesJaNoBanco: itens.length - plano.ausentes.length,
+        documentosAdicionados: plano.ausentes.map(item => ({ nome: item.nome, normalizado: item.normalizado })),
+        quantidadeAdicionada: plano.ausentes.length,
+        quantidadeDepois: existentes.length + (apply ? plano.ausentes.length : 0)
+    }
+
+    if (apply) {
+        for (const item of plano.ausentes) {
             await Natureza.updateOne(
-                { normalizado },
-                { $setOnInsert: { ...item, normalizado, ativo: true } },
+                { normalizado: item.normalizado },
+                { $setOnInsert: { nome: item.nome, normalizado: item.normalizado, ativo: true } },
                 { upsert: true, runValidators: true }
             )
         }
-        nomesExistentes.add(normalizado)
+        relatorio.quantidadeDepois = await Natureza.countDocuments()
     }
-    console.log(JSON.stringify(resultados, null, 2))
+
+    console.log(JSON.stringify(relatorio, null, 2))
 }
 
 importar()
     .catch(error => {
-        console.error('Importação do catálogo de naturezas interrompida:', error)
+        console.error('Importacao do catalogo de naturezas interrompida:', error)
         process.exitCode = 1
     })
     .finally(async () => {

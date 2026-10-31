@@ -132,6 +132,8 @@ const EfetivoSchema = new mongoose.Schema({
 
 const BoScheme = new mongoose.Schema({
     creatorId: String,
+    clientRequestId: { type: String, required: false },
+    lastClientMutationId: { type: String, required: false },
     documentRevision: { type: Number, default: 0 },
     documentVersionSequence: { type: Number, default: 0 },
     currentDocumentVersion: { type: Number, default: 0 },
@@ -150,13 +152,17 @@ const BoScheme = new mongoose.Schema({
     numeroEndereco:String,
     bairro:String,
     municipio:String,
+    localidadeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Localidade', required: false },
+    localidadeNome: String,
+    localidadeTipo: String,
+    zona: { type: String, enum: ['URBANA', 'RURAL', 'NAO_INFORMADA'], required: false },
     referencia:String,
     envolvidos:[EnvolvidoSchema],
     materiaisApreendidos:[MaterialSchema],
     efetivo:[EfetivoSchema],
     historicohtml:String
 
-}, { timestamps: true })
+}, { timestamps: true, autoIndex: process.env.NODE_ENV !== 'production' && process.env.MIGRATION_MODE !== 'true' })
 
 BoScheme.index({ municipio: 1, createdAt: -1 })
 BoScheme.index({ dataOcorrencia: 1 })
@@ -165,6 +171,14 @@ BoScheme.index({ municipio: 1, naturezaIds: 1 })
 BoScheme.index({ municipio: 1, bairro: 1 })
 BoScheme.index({ 'efetivo.id': 1, createdAt: -1 })
 BoScheme.index({ 'efetivo.numeroBarra': 1, createdAt: -1 })
+BoScheme.index(
+    { creatorId: 1, clientRequestId: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { clientRequestId: { $type: 'string' } },
+        name: 'creator_clientRequestId_unique'
+    }
+)
 
 const Boletim = mongoose.model('Boletim',BoScheme)
 

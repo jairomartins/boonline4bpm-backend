@@ -8,14 +8,14 @@ const verificaToken = async (req, res, next) => {
     const token = req.headers[TOKEN_HEADER];
 
     if (!token) {
-        return res.status(401).json({ message: "Missing token", auth: false });
+        return res.status(401).json({ message: "Missing token", code: "TOKEN_MISSING", auth: false });
     }
 
     try {
         const decoded = jwt.verify(token, SECRET_PASSWORD_TOKEN);
         if (!decoded || !decoded.data || typeof decoded.data !== 'object' ||
             typeof decoded.data.userId !== 'string') {
-            return res.status(401).json({ message: "Invalid or expired token", auth: false });
+            return res.status(401).json({ message: "Invalid token", code: "TOKEN_INVALID", auth: false });
         }
         const userQuery = User.findById(decoded.data.userId)
         const currentUser = userQuery && typeof userQuery.lean === 'function'
@@ -30,9 +30,9 @@ const verificaToken = async (req, res, next) => {
         req.user = decoded.data;
         return next();
     } catch (err) {
-        if (err && err.name === 'JsonWebTokenError') {
-            console.log("Error authenticating token:", err);
-            return res.status(401).json({ message: "Invalid or expired token", auth: false });
+        if (err && ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(err.name)) {
+            if (err.name === 'TokenExpiredError') return res.status(401).json({ message: 'Token expired', code: 'TOKEN_EXPIRED', auth: false });
+            return res.status(401).json({ message: "Invalid token", code: "TOKEN_INVALID", auth: false });
         }
         console.error("Error authenticating account:", err);
         return res.status(500).json({ message: "Unable to validate account status", auth: false });

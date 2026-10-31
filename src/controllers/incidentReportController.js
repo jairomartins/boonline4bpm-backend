@@ -1,14 +1,17 @@
 //Controller of Incident Reports
 
 const IncidentReport = require('../model/boletim')
+const { sanitizeHistoryHtml } = require('../utils/historyHtml')
 const mongoose = require('mongoose')
 const Natureza = require('../model/natureza')
+const Localidade = require('../model/localidade')
 const { validarMateriaisApreendidos } = require('../utils/materialValidation')
 const {
     getEffectiveAccess,
     isUserInIncidentReportEffective
 } = require('../utils/authorization')
 const boletimDocumentoController = require('./boletimDocumentoController')
+const localidadeController = require('./localidadeController')
 const { parseIncidentDate } = require('../utils/incidentDate')
 const {
     isValidCpf,
@@ -59,11 +62,25 @@ async function getRequestAccess(req) {
     return req.access || getEffectiveAccess(req.user.userId)
 }
 
+function naturezaDisplayExpression(catalogoPath, fallback) {
+    return {
+        $let: {
+            vars: { item: { $arrayElemAt: [catalogoPath, 0] } },
+            in: { $ifNull: ['$$item.nome', fallback] }
+        }
+    }
+}
+
 // Create or Update Incident Report
 exports.createOrUpdateIncidentReport = async (req, res) => {
     const incidentReportData = req.body && req.body.incidentReport;
     if (!incidentReportData || typeof incidentReportData !== 'object' || Array.isArray(incidentReportData)) {
         return res.status(400).json({ message: "O campo incidentReport deve ser um objeto." })
+    }
+    const receivedHistory = incidentReportData.historicohtml
+    if (incidentReportData.historicohtml !== undefined) {
+        if (typeof incidentReportData.historicohtml !== 'string') return res.status(400).json({ message: 'Histórico deve ser texto HTML.' })
+        incidentReportData.historicohtml = sanitizeHistoryHtml(incidentReportData.historicohtml)
     }
     const { numero, data } = incidentReportData
     if (typeof numero !== 'string' || !numero.trim() ||
@@ -82,6 +99,8 @@ exports.createOrUpdateIncidentReport = async (req, res) => {
         }
         try {
             const existing = await IncidentReport.findById(incidentReportData._id)
+            // Preserve untouched legacy HTML during unrelated report edits.
+            if (existing && receivedHistory === existing.historicohtml) incidentReportData.historicohtml = receivedHistory
             if (!existing) {
                 return res.status(404).json({ message: "Boletim não encontrado." })
             }
@@ -94,6 +113,15 @@ exports.createOrUpdateIncidentReport = async (req, res) => {
             }
             if (!isOwner && !access.permissions.includes('boletins.edit.all')) {
                 return res.status(403).json({ message: "Você só pode editar boletins registrados por você." })
+            }
+            const syncRequestId = incidentReportData.syncRequestId
+            if (syncRequestId !== undefined &&
+                (typeof syncRequestId !== 'string' ||
+                    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}:\d+$/i.test(syncRequestId))) {
+                return res.status(400).json({ message: 'Invalid sync request identifier.' })
+            }
+            if (syncRequestId && existing.lastClientMutationId === syncRequestId) {
+                return res.status(200).json({ incidentReport: existing, message: 'Update already applied for this synchronization request.', idempotentReplay: true })
             }
             const latitudeRecebida = Object.prototype.hasOwnProperty.call(incidentReportData, 'latitude')
             const longitudeRecebida = Object.prototype.hasOwnProperty.call(incidentReportData, 'longitude')
@@ -113,7 +141,10 @@ exports.createOrUpdateIncidentReport = async (req, res) => {
             if (naturezasRecebidas.error) {
                 return res.status(naturezasRecebidas.status).json({ message: naturezasRecebidas.error })
             }
-            const updateData = { ...incidentReportData }
+            const territorio = await localidadeController.validarReferencia(incidentReportData, existing)
+            if (territorio.error) return res.status(422).json({ message: territorio.error })
+            const updateData = { ...territorio.data }
+            if (territorio.clear) { delete updateData.localidadeId; delete updateData.localidadeNome }
             delete updateData.dataOcorrencia
             updateData.dataOcorrencia = parseIncidentDate(incidentReportData.data)
             if (coordenadasAtualizadas) {
@@ -132,11 +163,24 @@ exports.createOrUpdateIncidentReport = async (req, res) => {
             }
             delete updateData._id
             delete updateData.creatorId
+            delete updateData.createdAt
+            delete updateData.updatedAt
+            delete updateData.__v
             delete updateData.natureza
             delete updateData.naturezaId
             delete updateData.naturezaIds
             delete updateData.naturezaOriginal
             delete updateData.naturezaCatalogoMigrada
+            const expectedRevision = Object.prototype.hasOwnProperty.call(incidentReportData, 'expectedRevision')
+                ? incidentReportData.expectedRevision
+                : null
+            if (expectedRevision !== null && (!Number.isInteger(expectedRevision) || expectedRevision < 0)) {
+                return res.status(400).json({ message: 'Invalid expectedRevision.' })
+            }
+            delete updateData.expectedRevision
+            delete updateData.clientRequestId
+            delete updateData.syncRequestId
+            delete updateData.lastClientMutationId
             delete updateData.documentRevision
             delete updateData.documentVersionSequence
             delete updateData.currentDocumentVersion
@@ -161,14 +205,34 @@ exports.createOrUpdateIncidentReport = async (req, res) => {
                 $set: updateData,
                 $inc: { documentRevision: 1 }
             }
+            if (territorio.clear) updateOperation.$unset = { ...(updateOperation.$unset || {}), localidadeId: 1, localidadeNome: 1 }
+            if (syncRequestId) updateOperation.$set.lastClientMutationId = syncRequestId
             if (coordenadasAtualizadas && coordenadasAtualizadas.absent) {
-                updateOperation.$unset = { latitude: 1, longitude: 1 }
+                updateOperation.$unset = { ...(updateOperation.$unset || {}), latitude: 1, longitude: 1 }
             }
-            const updatedIncidentReport = await IncidentReport.findByIdAndUpdate(
-            incidentReportData._id,
-            updateOperation,
-            { new: true, runValidators: true })
+            const updatedIncidentReport = expectedRevision === null
+                ? await IncidentReport.findByIdAndUpdate(
+                    incidentReportData._id,
+                    updateOperation,
+                    { new: true, runValidators: true })
+                : await IncidentReport.findOneAndUpdate(
+                    {
+                        _id: incidentReportData._id,
+                        $or: [
+                            { documentRevision: expectedRevision },
+                            ...(expectedRevision === 0 ? [{ documentRevision: { $exists: false } }] : [])
+                        ]
+                    },
+                    updateOperation,
+                    { new: true, runValidators: true })
             if (!updatedIncidentReport) {
+                if (expectedRevision !== null) {
+                    const latest = await IncidentReport.findById(incidentReportData._id)
+                    if (latest) return res.status(409).json({
+                        message: 'This report changed elsewhere. Reload and compare versions before syncing.',
+                        serverRevision: Number(latest.documentRevision) || 0
+                    })
+                }
                 return res.status(404).json({ message: "Boletim não encontrado." })
             }
             await boletimDocumentoController.invalidarVersoesAnteriores(
@@ -190,6 +254,18 @@ exports.createOrUpdateIncidentReport = async (req, res) => {
             if (!access.permissions.includes('boletins.create')) {
                 return res.status(403).json({ message: 'Você não possui permissão para criar boletins.' })
             }
+            const clientRequestId = incidentReportData.clientRequestId
+            if (clientRequestId !== undefined &&
+                (typeof clientRequestId !== 'string' ||
+                    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(clientRequestId))) {
+                return res.status(400).json({ message: 'Invalid idempotency identifier.' })
+            }
+            if (clientRequestId) {
+                const alreadyCreated = await IncidentReport.findOne({ creatorId: req.user.userId, clientRequestId })
+                if (alreadyCreated) {
+                    return res.status(200).json({ incidentReport: alreadyCreated, message: 'Report already exists for this draft.', idempotentReplay: true })
+                }
+            }
             const coordenadas = normalizarParCoordenadas(
                 incidentReportData.latitude,
                 incidentReportData.longitude
@@ -203,16 +279,19 @@ exports.createOrUpdateIncidentReport = async (req, res) => {
             if (naturezasRecebidas.error) {
                 return res.status(naturezasRecebidas.status).json({ message: naturezasRecebidas.error })
             }
+            const territorio = await localidadeController.validarReferencia(incidentReportData, null)
+            if (territorio.error) return res.status(422).json({ message: territorio.error })
             const documentos = naturezasRecebidas.documentos
             const ids = documentos.map(documento => documento._id)
             const newIncidentReport = {
-                ...incidentReportData,
+                ...territorio.data,
                 dataOcorrencia: parseIncidentDate(incidentReportData.data),
                 natureza: documentos.map(documento => documento.nome).join('; '),
                 naturezaId: ids.length === 1 ? ids[0] : null,
                 naturezaIds: ids,
                 creatorId: req.user.userId
             };
+            if (clientRequestId) newIncidentReport.clientRequestId = clientRequestId
             delete newIncidentReport.latitude
             delete newIncidentReport.longitude
             if (!coordenadas.absent) {
@@ -227,6 +306,15 @@ exports.createOrUpdateIncidentReport = async (req, res) => {
             const createdIncidentReport = await IncidentReport.create(newIncidentReport);
             return res.status(201).json({incidentReport: createdIncidentReport, message: "Boletim criado com sucesso."});
         }catch(err){
+            if (err && err.code === 11000 && incidentReportData.clientRequestId) {
+                const alreadyCreated = await IncidentReport.findOne({
+                    creatorId: req.user.userId,
+                    clientRequestId: incidentReportData.clientRequestId
+                })
+                if (alreadyCreated) {
+                    return res.status(200).json({ incidentReport: alreadyCreated, message: 'Report already exists for this draft.', idempotentReplay: true })
+                }
+            }
             if (err && err.name === 'ValidationError') {
                 return res.status(400).json({ message: err.message })
             }
@@ -593,7 +681,7 @@ exports.incidentReportGeographicOptions = async (req, res) => {
 exports.incidentReportGeographic = async (req, res) => {
     const {
         from, to, municipality, natureId, natureIds: natureIdsQuery, bairro, dateField = 'fact',
-        groupBy = 'month', page = '1', pointPage = '1', pageSize = '100'
+        groupBy = 'month', page = '1', pointPage = '1', pageSize = '100', zone, localityType, localityId
     } = req.query
     const selectedNatureValues = parseNatureFilterValues(natureId, natureIdsQuery)
     const startDate = String(from || '')
@@ -633,6 +721,9 @@ exports.incidentReportGeographic = async (req, res) => {
     const end = new Date(`${endDate}T23:59:59.999${timezone}`)
     const match = { municipio: municipality.trim() }
     if (bairro) match.bairro = String(bairro).trim()
+    if (zone && ['URBANA', 'RURAL', 'NAO_INFORMADA'].includes(zone)) match.zona = zone
+    if (localityType && ['BAIRRO', 'POVOADO', 'LOCALIDADE_RURAL', 'VILA', 'DISTRITO', 'ASSENTAMENTO', 'COMUNIDADE', 'OUTRO'].includes(localityType)) match.localidadeTipo = localityType
+    if (localityId && mongoose.Types.ObjectId.isValid(localityId)) match.localidadeId = new mongoose.Types.ObjectId(localityId)
     if (dateField === 'registered') match.createdAt = { $gte: start, $lte: end }
     if (dateField === 'fact') {
         match.$and = [{
@@ -824,6 +915,7 @@ exports.incidentReportGeographic = async (req, res) => {
                             createdAt: 1,
                             natureza: 1,
                             bairro: 1,
+                            localidadeNome: 1,
                             municipio: 1,
                             latitude: '$_mapLatitude',
                             longitude: '$_mapLongitude'
@@ -843,6 +935,7 @@ exports.incidentReportGeographic = async (req, res) => {
                             createdAt: 1,
                             natureza: 1,
                             bairro: 1,
+                            localidadeNome: 1,
                             municipio: 1,
                             coordinateStatus: '$_mapCoordinateStatus'
                         }
@@ -851,16 +944,16 @@ exports.incidentReportGeographic = async (req, res) => {
                 recordCount: [{ $count: 'value' }],
                 neighborhoods: [
                     { $match: { _mapCoordinatesValid: true } },
-                    { $match: { bairro: { $type: 'string', $ne: '' } } },
-                    { $group: { _id: '$bairro', total: { $sum: 1 } } },
+                    { $match: { $expr: { $ne: [{ $ifNull: ['$localidadeNome', '$bairro'] }, ''] } } },
+                    { $group: { _id: { $ifNull: ['$localidadeNome', '$bairro'] }, total: { $sum: 1 } } },
                     { $sort: { total: -1, _id: 1 } },
                     { $limit: 100 },
                     { $project: { _id: 0, bairro: '$_id', total: 1 } }
                 ],
                 neighborhoodCount: [
                     { $match: { _mapCoordinatesValid: true } },
-                    { $match: { bairro: { $type: 'string', $ne: '' } } },
-                    { $group: { _id: '$bairro' } },
+                    { $match: { $expr: { $ne: [{ $ifNull: ['$localidadeNome', '$bairro'] }, ''] } } },
+                    { $group: { _id: { $ifNull: ['$localidadeNome', '$bairro'] } } },
                     { $count: 'value' }
                 ],
                 timeline: [
@@ -910,13 +1003,13 @@ exports.incidentReportGeographic = async (req, res) => {
                         $group: {
                             _id: '$_mapNatureIds',
                             nome: {
-                                $first: {
-                                    $cond: [
-                                        { $ne: ['$_mapNatureIds', null] },
-                                        { $ifNull: [{ $arrayElemAt: ['$_mapNature.nome', 0] }, '$natureza'] },
-                                        'Pendente de classificação'
-                                    ]
-                                }
+                                    $first: {
+                                        $cond: [
+                                            { $ne: ['$_mapNatureIds', null] },
+                                            naturezaDisplayExpression('$_mapNature', '$natureza'),
+                                            'Pendente de classificação'
+                                        ]
+                                    }
                             },
                             total: { $sum: 1 }
                         }
@@ -989,7 +1082,11 @@ exports.incidentReportGeographic = async (req, res) => {
 }
 
 exports.incidentReportStatistics = async (req, res) => {
-    const { from, to, municipality, nature, natureId, natureIds: natureIdsQuery } = req.query
+    const { from, to, municipality, nature, natureId, natureIds: natureIdsQuery, zone, localityType, localityId } = req.query
+    if (zone && !['URBANA', 'RURAL', 'NAO_INFORMADA'].includes(zone)) return res.status(400).json({ message: 'Zona territorial inválida.' })
+
+    if (localityType && !['BAIRRO', 'POVOADO', 'LOCALIDADE_RURAL', 'VILA', 'DISTRITO', 'ASSENTAMENTO', 'COMUNIDADE', 'OUTRO'].includes(localityType)) return res.status(400).json({ message: 'Tipo de localidade inválido.' })
+    if (localityId && !mongoose.Types.ObjectId.isValid(localityId)) return res.status(400).json({ message: 'Identificador de localidade inválido.' })
     const startDate = from || `${new Date().getFullYear()}-01-01`
     const endDate = to || new Date().toISOString().slice(0, 10)
 
@@ -1011,6 +1108,9 @@ exports.incidentReportStatistics = async (req, res) => {
     const end = new Date(`${endDate}T23:59:59.999Z`)
     const match = {}
     if (municipality) match.municipio = String(municipality).trim()
+    if (zone && ['URBANA', 'RURAL', 'NAO_INFORMADA'].includes(zone)) match.zona = zone
+    if (localityType && ['BAIRRO', 'POVOADO', 'LOCALIDADE_RURAL', 'VILA', 'DISTRITO', 'ASSENTAMENTO', 'COMUNIDADE', 'OUTRO'].includes(localityType)) match.localidadeTipo = localityType
+    if (localityId && mongoose.Types.ObjectId.isValid(localityId)) match.localidadeId = new mongoose.Types.ObjectId(localityId)
     if (selectedNatureValues.length) {
         const selectedIds = selectedNatureValues
             .filter(value => value !== 'pendente')
@@ -1039,7 +1139,7 @@ exports.incidentReportStatistics = async (req, res) => {
     }
 
     try {
-        const [result, municipalities, natures] = await Promise.all([
+        const [result, municipalities, natures, localities] = await Promise.all([
             IncidentReport.aggregate([
                 {
                     $match: {
@@ -1108,7 +1208,7 @@ exports.incidentReportStatistics = async (req, res) => {
                                         $first: {
                                             $cond: [
                                                 { $ne: [{ $ifNull: ['$_naturezaIdsParaEstatistica', null] }, null] },
-                                                { $ifNull: [{ $arrayElemAt: ['$_naturezaCatalogo.nome', 0] }, '$natureza'] },
+                                                naturezaDisplayExpression('$_naturezaCatalogo', '$natureza'),
                                                 'Pendente de classificação'
                                             ]
                                         }
@@ -1268,7 +1368,8 @@ exports.incidentReportStatistics = async (req, res) => {
                 }
             ]),
             IncidentReport.distinct('municipio'),
-            Natureza.find().select('_id nome ativo').sort({ nome: 1 }).lean()
+            Natureza.find().select('_id nome ativo').sort({ nome: 1 }).lean(),
+            Localidade.find({ ativo: true, ...(municipality ? { municipio: String(municipality).trim() } : {}), ...(zone ? { zona } : {}), ...(localityType ? { tipo: localityType } : {}) }).select('_id nome municipio tipo zona').sort({ nome: 1 }).limit(500).lean()
         ])
 
         const statistics = result[0] || {}
@@ -1315,7 +1416,10 @@ exports.incidentReportStatistics = async (req, res) => {
                     id: String(item._id),
                     nome: item.nome,
                     ativo: item.ativo
-                }))
+                })),
+                localities: localities.map(({ _id, nome, municipio, tipo, zona }) => ({ id: String(_id), nome, municipio, tipo, zona })),
+                zones: ['URBANA', 'RURAL', 'NAO_INFORMADA'],
+                localityTypes: ['BAIRRO', 'POVOADO', 'LOCALIDADE_RURAL', 'VILA', 'DISTRITO', 'ASSENTAMENTO', 'COMUNIDADE', 'OUTRO']
             }
         })
     } catch (err) {

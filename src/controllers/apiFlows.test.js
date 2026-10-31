@@ -22,8 +22,10 @@ const reportState = {
     profileAggregateResult: [],
     aggregatePipeline: null,
     lastFindQuery: null,
-    lastUpdate: null
+    lastUpdate: null,
+    optimisticUpdateCount: 0
 }
+const idempotentReports = new Map()
 const documentState = {
     documents: [],
     accesses: [],
@@ -58,12 +60,19 @@ const User = {
         return userState.created
     },
     updateOne: async (query, update) => {
+        if (userState.user && update.$set?.passwordResetTokenHash) userState.user.passwordResetTokenHash = update.$set.passwordResetTokenHash
         if (userState.created && update.$set?.emailConfirmationTokenHash) {
             userState.created.emailConfirmationTokenHash = update.$set.emailConfirmationTokenHash
         }
         return { acknowledged: true }
     },
     findOneAndUpdate: async (query, update) => {
+        if (query.passwordResetTokenHash) {
+            if (!userState.user || String(userState.user._id) !== String(query._id) || userState.user.passwordResetTokenHash !== query.passwordResetTokenHash) return null
+            Object.assign(userState.user, update.$set || {})
+            Object.keys(update.$unset || {}).forEach(field => delete userState.user[field])
+            return userState.user
+        }
         if (!userState.created ||
             String(userState.created._id) !== String(query._id) ||
             userState.created.emailConfirmationTokenHash !== query.emailConfirmationTokenHash) {
@@ -78,6 +87,9 @@ const User = {
 const IncidentReport = {
     create: async report => {
         reportState.created = { _id: 'created-report', ...report }
+        if (report.creatorId && report.clientRequestId) {
+            idempotentReports.set(`${report.creatorId}:${report.clientRequestId}`, reportState.created)
+        }
         return reportState.created
     },
     findById: async id => reportState.existing &&
@@ -108,8 +120,18 @@ const IncidentReport = {
     findOneAndUpdate: async (query, data) => {
         const report = reportState.existing
         if (!report || String(report._id) !== String(query._id)) return null
+        if (data.$inc?.documentRevision) {
+            const expected = query.$or?.[0]?.documentRevision
+            const missingFallback = query.$or?.[1]?.documentRevision?.$exists === false
+            if (!(Number(report.documentRevision || 0) === expected ||
+                (missingFallback && report.documentRevision === undefined))) return null
+            Object.assign(report, data.$set || {})
+            report.documentRevision = (Number(report.documentRevision) || 0) + Number(data.$inc.documentRevision)
+            reportState.optimisticUpdateCount += 1
+            return report
+        }
         const revision = query.$or[0].documentRevision
-        const existsFallback = query.$or[1].documentRevision.$exists === false
+        const existsFallback = query.$or[1]?.documentRevision?.$exists === false
         const matchesRevision = Number(report.documentRevision) === revision ||
             (existsFallback && report.documentRevision === undefined)
         if (!matchesRevision) return null
@@ -144,9 +166,9 @@ const IncidentReport = {
             }
         }
     },
-    findOne: () => ({
-        sort: async () => reportState.reports[0] || null
-    })
+    findOne: query => query && query.clientRequestId
+        ? Promise.resolve(idempotentReports.get(`${query.creatorId}:${query.clientRequestId}`) || null)
+        : ({ sort: async () => reportState.reports[0] || null })
 }
 
 const naturezaIds = ['64b000000000000000000001', '64b000000000000000000002']
@@ -224,12 +246,15 @@ const BoletimDocumentoAcesso = {
 
 mockModule('../model/user', User)
 mockModule('../model/boletim', IncidentReport)
+mockModule('../model/localidade', {
+    find: () => ({ select() { return this }, sort() { return this }, limit() { return this }, lean: async () => [] })
+})
 mockModule('../model/natureza', Natureza)
 mockModule('../model/boletimDocumento', BoletimDocumento)
 mockModule('../model/boletimDocumentoAcesso', BoletimDocumentoAcesso)
 mockModule('../lib/nodemailerconfig', {
     sendMailConfirm: async (_email, token) => { userState.confirmationToken = token },
-    sendMailRecoverPassword: async () => {}
+    sendMailRecoverPassword: async (_user, token) => { userState.recoveryToken = token }
 })
 const realQRCode = require('qrcode')
 mockModule(require.resolve('qrcode'), {
@@ -243,10 +268,12 @@ mockModule(require.resolve('qrcode'), {
 
 const { gerarToken } = require('../lib/jwtconfig')
 const { gerarTokenConfirmacao } = require('../lib/jwtconfig')
+const { gerarTokenRecuperacao } = require('../lib/jwtconfig')
 const crypto = require('node:crypto')
 process.env.PUBLIC_VALIDATION_BASE_URL = 'https://validacao.example.test'
 const app = express()
 app.use(express.json())
+app.use(express.urlencoded({ extended: false }))
 require('../http/authRouter')(app)
 require('../http/incidentReportRoute')(app)
 require('../http/userRoute')(app)
@@ -275,6 +302,7 @@ test.beforeEach(() => {
     }
     reportState.existing = null
     reportState.created = null
+    idempotentReports.clear()
     reportState.updated = null
     reportState.reports = []
     reportState.municipalities = []
@@ -285,11 +313,134 @@ test.beforeEach(() => {
     reportState.aggregatePipeline = null
     reportState.lastFindQuery = null
     reportState.lastUpdate = null
+    reportState.optimisticUpdateCount = 0
     documentState.documents = []
     documentState.accesses = []
     documentState.validationUrl = null
     documentState.qrBuffer = null
     documentState.mutateRevisionOnCreate = false
+})
+
+test('sessão diferencia token ausente, inválido e expirado sem erro 500', async () => {
+    assert.equal((await request('/auth/session')).status, 401)
+    assert.equal((await request('/auth/session', { token: 'invalid' })).status, 401)
+    const expired = require('jsonwebtoken').sign({ data: { userId: 'user-record-1' } }, process.env.SECRET_PASSWORD_TOKEN, { expiresIn: -1 })
+    const response = await request('/auth/session', { token: expired })
+    assert.equal(response.status, 401)
+    assert.equal(response.body.code, 'TOKEN_EXPIRED')
+})
+
+test('formulário de recuperação mantém URL pública ao enviar e endpoint IA não existe', async () => {
+    await ensureServer()
+    const response = await fetch(`${baseUrl}/auth/passwordrecover/${gerarTokenRecuperacao('user-record-1')}`)
+    assert.equal(response.status, 200)
+    assert.match(await response.text(), /action=""/)
+    assert.equal((await fetch(`${baseUrl}/api/verify-text`, { method: 'POST' })).status, 404)
+})
+
+test('recuperação completa via prefixo externo mantém formulário e token de uso único', async () => {
+    const proxy = express()
+    proxy.use('/api', app) // Emula a remoção de prefixo no limite do proxy.
+    const proxyServer = proxy.listen(0)
+    await new Promise(resolve => proxyServer.once('listening', resolve))
+    const origin = `http://127.0.0.1:${proxyServer.address().port}`
+    try {
+        const response = await fetch(`${origin}/api/auth/recuperarSenha`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userEmail: userState.user.userEmail })
+        })
+        assert.equal(response.status, 200)
+        const path = `/api/auth/passwordrecover/${userState.recoveryToken}`
+        const form = await fetch(origin + path)
+        assert.match(await form.text(), /action=""/)
+        const submit = () => fetch(origin + path, { method: 'POST', body: new URLSearchParams({ userPassword: 'nova-senha-segura' }) })
+        const saved = await submit()
+        assert.equal(saved.status, 200)
+        assert.match(await saved.text(), /Voltar ao login/)
+        assert.equal(bcrypt.compareSync('nova-senha-segura', userState.user.userPassword), true)
+        assert.equal((await submit()).status, 400)
+    } finally {
+        proxyServer.closeAllConnections()
+        await new Promise(resolve => proxyServer.close(resolve))
+    }
+})
+
+test('reenvio de um clientRequestId retorna o boletim existente sem criar duplicata', async () => {
+    const token = tokenFor()
+    const clientRequestId = '041f8f16-94c8-4f5a-9f16-a4e6d4aa2c50'
+    const first = await request('/incidentReport/create', {
+        method: 'POST', token,
+        body: { incidentReport: validReport({ clientRequestId, endereco: 'Original' }) }
+    })
+    assert.equal(first.status, 201, JSON.stringify(first.body))
+    const originalId = reportState.created._id
+    const replay = await request('/incidentReport/create', {
+        method: 'POST', token,
+        body: { incidentReport: validReport({ clientRequestId, endereco: 'Alteração local posterior' }) }
+    })
+    assert.equal(first.status, 201)
+    assert.equal(replay.status, 200)
+    assert.equal(replay.body.idempotentReplay, true)
+    assert.equal(replay.body.incidentReport._id, originalId)
+    assert.equal(replay.body.incidentReport.endereco, first.body.incidentReport.endereco)
+})
+
+test('rejeita sincronizacao otimista com revisao antiga e preserva a versao do servidor', async () => {
+    const token = tokenFor()
+    reportState.existing = {
+        _id: '64b000000000000000000010',
+        creatorId: 'user-record-1',
+        documentRevision: 3,
+        numero: 'BO-2026-001',
+        data: '27/10/2026',
+        municipio: 'Sao Luis',
+        natureza: 'Roubo',
+        naturezaIds: [naturezaIds[0]],
+        envolvidos: []
+    }
+    const result = await request('/incidentReport/create', {
+        method: 'POST', token,
+        body: { incidentReport: validReport({
+            _id: reportState.existing._id,
+            expectedRevision: 2,
+            endereco: 'Edicao offline antiga'
+        }) }
+    })
+    assert.equal(result.status, 409)
+    assert.equal(reportState.existing.documentRevision, 3)
+    assert.equal(reportState.existing.endereco, undefined)
+})
+
+test('replay de uma atualizacao ja aplicada nao incrementa a revisao novamente', async () => {
+    const token = tokenFor()
+    const id = '64b000000000000000000010'
+    const syncRequestId = '041f8f16-94c8-4f5a-9f16-a4e6d4aa2c50:8'
+    reportState.existing = {
+        _id: id,
+        creatorId: 'user-record-1',
+        documentRevision: 0,
+        numero: 'BO-2026-001',
+        data: '27/10/2026',
+        municipio: 'Sao Luis',
+        natureza: 'Roubo',
+        naturezaIds: [naturezaIds[0]],
+        envolvidos: []
+    }
+    const body = { incidentReport: validReport({
+        _id: id,
+        expectedRevision: 0,
+        syncRequestId,
+        endereco: 'Atualizado uma vez'
+    }) }
+    const first = await request('/incidentReport/create', { method: 'POST', token, body })
+    const revisionAfterFirst = reportState.existing.documentRevision
+    const replay = await request('/incidentReport/create', { method: 'POST', token, body })
+
+    assert.equal(first.status, 200)
+    assert.equal(replay.status, 200)
+    assert.equal(replay.body.idempotentReplay, true)
+    assert.equal(reportState.optimisticUpdateCount, 1)
+    assert.equal(revisionAfterFirst, 1)
+    assert.equal(reportState.existing.documentRevision, 1)
 })
 
 test('lista boletins paginados somente do efetivo autenticado com filtros combinados', async () => {
@@ -506,6 +657,23 @@ test('login normaliza e-mail, emite token válido e rejeita senha incorreta', as
     })
     assert.equal(invalid.status, 401)
     assert.equal(invalid.body.authenticated, false)
+})
+
+test('login mantém resposta genérica para usuário inexistente e valida campos ausentes', async () => {
+    userState.user = null
+    const missingUser = await request('/login', {
+        method: 'POST',
+        body: { userEmail: 'nao-encontrado@example.test', userPassword: 'senha-de-teste' }
+    })
+    assert.equal(missingUser.status, 401)
+    assert.equal(missingUser.body.authenticated, false)
+
+    const missingFields = await request('/login', {
+        method: 'POST',
+        body: { userEmail: 'teste@example.test' }
+    })
+    assert.equal(missingFields.status, 400)
+    assert.equal(missingFields.body.authenticated, false)
 })
 
 test('login exige confirmação do e-mail antes de autenticar', async () => {
@@ -760,6 +928,8 @@ test('mapa geográfico é protegido por perfil administrativo e omite dados pess
     assert.deepEqual(options.body.municipalities, ['Balsas', 'São Luís'])
     assert.deepEqual(options.body.neighborhoods, [])
     assert.deepEqual(options.body.natures.map(item => item.nome), ['Roubo', 'Furto'])
+    assert.equal(options.body.natures[0].tipoCatalogo, undefined)
+    assert.equal(options.body.natures[0].codigoOrigem, undefined)
     assert.deepEqual(reportState.distinctCalls, [{ field: 'municipio', filter: undefined }])
 
     reportState.distinctCalls = []

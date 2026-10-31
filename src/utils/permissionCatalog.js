@@ -15,6 +15,7 @@ const permissionCatalog = [
     { id: 'roles.view', module: 'Gerenciamento', label: 'Consultar roles e permissões' },
     { id: 'roles.manage', module: 'Gerenciamento', label: 'Criar roles e gerenciar permissões' },
     { id: 'naturezas.manage', module: 'Gerenciamento', label: 'Gerenciar naturezas de ocorrência' },
+    { id: 'localidades.manage', module: 'Gerenciamento', label: 'Gerenciar localidades e territórios' },
 ]
 
 const BASIC_PERMISSIONS = [

@@ -2,6 +2,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const PDFDocument = require('pdfkit')
 const QRCode = require('qrcode')
+const { renderHistory } = require('./historyPdf')
 
 const PAGE_WIDTH = 595.28
 const PAGE_HEIGHT = 841.89
@@ -545,11 +546,7 @@ async function gerarPdfBoletim({ report, validationUrl }) {
     }
 
     addSection(doc, 'HISTÓRICO')
-    const history = plainText(report.historicohtml)
-    if (history) {
-        doc.font('Helvetica').fontSize(8.5).fillColor('#000000')
-            .text(history, { width: CONTENT_WIDTH, lineGap: 2, align: 'justify' })
-    }
+    renderHistory(doc, report.historicohtml, CONTENT_WIDTH, LEFT)
 
     addOfficerSection(doc, Array.isArray(report.efetivo) ? report.efetivo : [])
 

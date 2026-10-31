@@ -1,4 +1,6 @@
 require('dotenv').config()
+const { requireExplicitMongo } = require('./maintenanceDb')
+if (require.main === module) requireExplicitMongo()
 const mongoose = require('../database/db')
 const User = require('../model/user')
 const roleController = require('../controllers/roleController')
@@ -23,10 +25,12 @@ async function migrateRoles() {
     )
 }
 
-migrateRoles()
+if (require.main === module) migrateRoles()
     .then(() => console.log('Roles iniciais cadastradas e perfis legados mapeados sem remover dados.'))
     .catch(error => {
         console.error('Migração de roles não concluída:', error)
         process.exitCode = 1
     })
     .finally(() => mongoose.disconnect())
+
+module.exports = migrateRoles
